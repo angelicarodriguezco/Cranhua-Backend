@@ -20,5 +20,22 @@ services:
       retries: 10
       start_period: 10s
 
+  backend:
+    build: .
+    container_name: cranhua-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:?Falta POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Falta POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?Falta GEMINI_API_KEY en .env}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
 volumes:
   db_data:
