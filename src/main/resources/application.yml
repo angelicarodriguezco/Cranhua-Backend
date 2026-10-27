@@ -28,3 +28,9 @@ management:
     web:
       exposure:
         include: health
+
+# Origen local de Angular (dev). Separar con comas si hay varios.
+app:
+  cors:
+    allowed-origins: http://localhost:4200
+
