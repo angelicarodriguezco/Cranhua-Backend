@@ -3,3 +3,7 @@ spring:
     google:
       genai:
         api-key: "GEMINI_API_KEY"
+  datasource:
+    url: jdbc:h2:mem:cranhua;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:

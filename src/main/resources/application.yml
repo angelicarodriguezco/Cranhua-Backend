@@ -1,9 +1,10 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:h2:mem:cranhua
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: none
@@ -29,8 +30,6 @@ management:
       exposure:
         include: health
 
-# Origen local de Angular (dev). Separar con comas si hay varios.
 app:
   cors:
     allowed-origins: http://localhost:4200
-
