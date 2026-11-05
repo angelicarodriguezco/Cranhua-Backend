@@ -65,6 +65,18 @@ También se puede correr `CranhuaApplication` desde IntelliJ. En ese caso revisa
 
 Si el contenedor `cranhua-backend` está corriendo, el puerto 8080 va a estar ocupado. Apagarlo antes con `docker compose stop backend`.
 
+## Base de datos y migraciones
+
+Las tablas no se crean a mano: al arrancar, el backend corre con Flyway las migraciones de `src/main/resources/db/migration` que falten. Después Hibernate valida que las entidades coincidan con las tablas (`ddl-auto: validate`) y, si no coinciden, el backend no arranca.
+
+Para cambiar el esquema se agrega un archivo nuevo con la siguiente versión, por ejemplo `V2__crear_finca.sql`. Nunca editar una migración que ya está en `develop`. El SQL tiene que funcionar en PostgreSQL y en el H2 de los tests.
+
+Para ver qué migraciones se aplicaron:
+
+```bash
+docker compose exec db psql -U cranhua -d cranhua -c "select version, description, success from flyway_schema_history"
+```
+
 ## Probar PostGIS
 
 El script `docker/db/prueba-postgis.sql` crea una finca de prueba en una tabla temporal y calcula su área. No deja nada guardado.
@@ -111,4 +123,5 @@ No hacer commits directos a `develop` ni a `main`.
 - **`Falta POSTGRES_DB en .env`** (u otra variable): no existe el `.env` o el comando se está corriendo fuera de la raíz del repo.
 - **`port is already allocated`** o `address already in use`: hay otro Postgres o backend usando el puerto. Cambiar `DB_PORT` o `BACKEND_PORT` en `.env`, o apagar el otro proceso.
 - **`Cannot connect to the Docker daemon`**: Docker Desktop no está abierto.
+- **`Validate failed: Migrations have failed validation`**: se editó una migración que ya estaba aplicada en la base local. Volver a dejar el archivo como estaba, o borrar la base con `docker compose down -v` si son solo datos de prueba.
 - **El backend local no conecta a la base**: confirmar con `docker compose ps` que `cranhua-db` está `healthy` y que `DB_PORT` coincide.
