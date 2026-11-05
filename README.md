@@ -22,6 +22,7 @@ copy .env.example .env    # PowerShell / CMD
 | Variable            | Para qué sirve                                                                                                                                       | Valor de ejemplo |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | `GEMINI_API_KEY`    | Llave de Google AI Studio que usa Spring AI. Docker Compose no arranca si está vacía. Con `pendiente` el backend levanta, pero `/api/ai/chat` falla. | `pendiente`      |
+| `GOOGLE_CLIENT_ID`  | Client ID web de Google Cloud para registrarse con Google. Si queda vacío el backend levanta, pero `/api/auth/registro/google` responde 401.         | (vacío)          |
 | `POSTGRES_DB`       | Nombre de la base de datos                                                                                                                           | `cranhua`        |
 | `POSTGRES_USER`     | Usuario de la base de datos                                                                                                                          | `cranhua`        |
 | `POSTGRES_PASSWORD` | Contraseña de la base de datos                                                                                                                       | `Cranhua123`     |
@@ -93,12 +94,15 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 
 ## Endpoints disponibles
 
-| Método | Ruta               | Acceso  | Descripción                                                                |
-| ------ | ------------------ | ------- | -------------------------------------------------------------------------- |
-| `GET`  | `/actuator/health` | Público | Estado del servicio                                                        |
-| `POST` | `/api/ai/chat`     | Público | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}` |
+| Método | Ruta                        | Acceso  | Descripción                                                                                                                                                        |
+| ------ | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/actuator/health`          | Público | Estado del servicio                                                                                                                                                |
+| `POST` | `/api/ai/chat`              | Público | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                         |
+| `POST` | `/api/auth/registro`        | Público | Registro con correo. Body: `{"nombreCompleto", "correo", "contrasena", "roles": ["CAFETALERO"], "telefono"}`. Responde 201 con la cuenta y deja la sesión iniciada |
+| `POST` | `/api/auth/registro/google` | Público | Registro con Google. Body: `{"credencial": "<ID token>", "roles": [...]}`                                                                                          |
+| `GET`  | `/api/cuenta/actual`        | Sesión  | Cuenta de la sesión: `{id, nombreCompleto, correo, roles}`                                                                                                         |
 
-Cualquier otra ruta pide autenticación y devuelve 401 por ahora. CORS permite `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`).
+La sesión va en la cookie `JSESSIONID` (HttpOnly, SameSite=Lax). Las rutas que piden sesión responden 401 si no hay una. CORS permite `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`).
 
 ## Tests y formato
 
