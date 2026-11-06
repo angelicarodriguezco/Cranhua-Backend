@@ -6,6 +6,7 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,8 +42,12 @@ public class Cuenta {
   @Column(name = "foto_url", length = 500)
   private String fotoUrl;
 
-  @Column(name = "contrasena_hash", nullable = false, length = 100)
+  // Las cuentas de Google no tienen contraseña; la base exige una de las dos
+  @Column(name = "contrasena_hash", length = 100)
   private String contrasenaHash;
+
+  @Column(name = "google_id", unique = true)
+  private String googleId;
 
   @Column(nullable = false)
   private boolean eliminada = false;
@@ -53,7 +58,7 @@ public class Cuenta {
   @Column(name = "creada_en", nullable = false, updatable = false)
   private Instant creadaEn;
 
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "cuenta_rol", joinColumns = @JoinColumn(name = "cuenta_id"))
   @Enumerated(EnumType.STRING)
   @Column(name = "rol", nullable = false, length = 20)
@@ -72,17 +77,27 @@ public class Cuenta {
     this.roles = new HashSet<>(roles);
   }
 
+  public static Cuenta deGoogle(
+      String nombreCompleto, String correo, String googleId, String fotoUrl, Set<Rol> roles) {
+    Cuenta cuenta = new Cuenta(nombreCompleto, correo, null, roles);
+    cuenta.googleId = googleId;
+    cuenta.fotoUrl = fotoUrl;
+    return cuenta;
+  }
+
+  public static String normalizarCorreo(String correo) {
+    return correo == null ? null : correo.strip().toLowerCase(Locale.ROOT);
+  }
+
   @PrePersist
   void alCrear() {
     creadaEn = Instant.now();
-    normalizarCorreo();
+    alActualizar();
   }
 
   @PreUpdate
-  void normalizarCorreo() {
-    if (correo != null) {
-      correo = correo.strip().toLowerCase(Locale.ROOT);
-    }
+  void alActualizar() {
+    correo = normalizarCorreo(correo);
   }
 
   // Borrado lógico: la fila se conserva para no romper la trazabilidad
@@ -133,6 +148,10 @@ public class Cuenta {
 
   public void setContrasenaHash(String contrasenaHash) {
     this.contrasenaHash = contrasenaHash;
+  }
+
+  public String getGoogleId() {
+    return googleId;
   }
 
   public boolean isEliminada() {

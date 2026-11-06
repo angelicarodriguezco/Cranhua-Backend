@@ -8,5 +8,7 @@ public interface CuentaRepository extends JpaRepository<Cuenta, UUID> {
 
   Optional<Cuenta> findByCorreoAndEliminadaFalse(String correo);
 
+  Optional<Cuenta> findByGoogleIdAndEliminadaFalse(String googleId);
+
   boolean existsByCorreo(String correo);
 }

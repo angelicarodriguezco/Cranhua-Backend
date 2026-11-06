@@ -33,3 +33,8 @@ management:
 app:
   cors:
     allowed-origins: http://localhost:4200
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  sesion:
+    secreto: ${JWT_SECRET:}
+    duracion: 8h

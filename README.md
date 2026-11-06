@@ -22,6 +22,8 @@ copy .env.example .env    # PowerShell / CMD
 | Variable            | Para qué sirve                                                                                                                                       | Valor de ejemplo |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | `GEMINI_API_KEY`    | Llave de Google AI Studio que usa Spring AI. Docker Compose no arranca si está vacía. Con `pendiente` el backend levanta, pero `/api/ai/chat` falla. | `pendiente`      |
+| `GOOGLE_CLIENT_ID`  | Client ID web de Google Cloud para registrarse y entrar con Google. Si queda vacío el backend levanta, pero las rutas de Google responden 401.         | (vacío)          |
+| `JWT_SECRET`        | Clave con la que se firma el token de sesión. Mínimo 32 caracteres; sin ella el backend no arranca. Generarla con `openssl rand -base64 48`.          | (generada)       |
 | `POSTGRES_DB`       | Nombre de la base de datos                                                                                                                           | `cranhua`        |
 | `POSTGRES_USER`     | Usuario de la base de datos                                                                                                                          | `cranhua`        |
 | `POSTGRES_PASSWORD` | Contraseña de la base de datos                                                                                                                       | `Cranhua123`     |
@@ -93,12 +95,18 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 
 ## Endpoints disponibles
 
-| Método | Ruta               | Acceso  | Descripción                                                                |
-| ------ | ------------------ | ------- | -------------------------------------------------------------------------- |
-| `GET`  | `/actuator/health` | Público | Estado del servicio                                                        |
-| `POST` | `/api/ai/chat`     | Público | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}` |
+| Método | Ruta                        | Acceso  | Descripción                                                                                                                                                        |
+| ------ | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/actuator/health`          | Público | Estado del servicio                                                                                                                                                |
+| `POST` | `/api/ai/chat`              | Público | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                         |
+| `POST` | `/api/auth/registro`        | Público | Registro con correo. Body: `{"nombreCompleto", "correo", "contrasena", "roles": ["CAFETALERO"], "telefono"}`. Responde 201 con la cuenta y deja la sesión iniciada |
+| `POST` | `/api/auth/registro/google` | Público | Registro con Google. Body: `{"credencial": "<ID token>", "roles": [...]}`                                                                                          |
+| `POST` | `/api/auth/iniciarSesion`        | Público | Login con correo. Body: `{"correo", "contrasena"}`. Responde 200 con la cuenta y la cookie de sesión. Credenciales incorrectas o cuenta eliminada: 401 `Correo o contraseña incorrectos.` |
+| `POST` | `/api/auth/iniciarSesion/google` | Público | Login con Google. Body: `{"credencial": "<ID token>"}`. 401 si el token no es válido o no hay cuenta (activa) registrada con esa cuenta de Google |
+| `POST` | `/api/auth/cerrarSesion`         | Público | Borra la cookie de sesión. Responde 204                                                                                                            |
+| `GET`  | `/api/cuenta/actual`        | Sesión  | Cuenta de la sesión: `{id, nombreCompleto, correo, roles}`                                                                                                         |
 
-Cualquier otra ruta pide autenticación y devuelve 401 por ahora. CORS permite `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`).
+La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles` y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie. CORS permite `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`).
 
 ## Tests y formato
 
