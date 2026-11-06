@@ -98,7 +98,7 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 | Método | Ruta                        | Acceso  | Descripción                                                                                                                                                        |
 | ------ | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `GET`  | `/actuator/health`          | Público | Estado del servicio                                                                                                                                                |
-| `POST` | `/api/ai/chat`              | Público | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                         |
+| `POST` | `/api/ai/chat`              | Sesión  | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                         |
 | `POST` | `/api/auth/registro`        | Público | Registro con correo. Body: `{"nombreCompleto", "correo", "contrasena", "roles": ["CAFETALERO"], "telefono"}`. Responde 201 con la cuenta y deja la sesión iniciada |
 | `POST` | `/api/auth/registro/google` | Público | Registro con Google. Body: `{"credencial": "<ID token>", "roles": [...]}`                                                                                          |
 | `POST` | `/api/auth/iniciarSesion`        | Público | Login con correo. Body: `{"correo", "contrasena"}`. Responde 200 con la cuenta y la cookie de sesión. Credenciales incorrectas o cuenta eliminada: 401 `Correo o contraseña incorrectos.` |
@@ -106,7 +106,15 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 | `POST` | `/api/auth/cerrarSesion`         | Público | Borra la cookie de sesión. Responde 204                                                                                                            |
 | `GET`  | `/api/cuenta/actual`        | Sesión  | Cuenta de la sesión: `{id, nombreCompleto, correo, roles}`                                                                                                         |
 
-La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles` y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie. CORS permite `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`).
+La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles` y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie.
+
+### Acceso por rol
+
+- Sin sesión solo se puede usar `/api/auth/**`, `/api/publico/**` y `GET /actuator/health`. Todo lo demás pide sesión.
+- Cada endpoint protegido declara con `@PreAuthorize` qué roles lo pueden usar, por ejemplo `@PreAuthorize("hasRole('TOSTADOR')")`. Si lo puede usar cualquier cuenta: `@PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")`.
+- Sin sesión o con un token inválido: 401. Con sesión pero sin el rol que pide el endpoint: 403.
+- Los roles salen del claim `roles` del token, así que una cuenta con varios roles puede usar los endpoints de cada uno.
+- CORS solo acepta el origen del frontend, `http://localhost:4200` (propiedad `app.cors.allowed-origins` en `application.yml`). Un preflight desde otro origen recibe 403.
 
 ## Tests y formato
 
