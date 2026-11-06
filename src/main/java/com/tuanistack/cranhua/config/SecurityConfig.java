@@ -45,21 +45,18 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     HttpStatusEntryPoint responder401 = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
-    AccessDeniedHandler responder403 =
-        (request, response, e) -> response.setStatus(HttpStatus.FORBIDDEN.value());
+    AccessDeniedHandler responder403 = (req, res, e) -> res.setStatus(HttpStatus.FORBIDDEN.value());
     http.csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
         .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth -> auth.requestMatchers(RUTAS_PUBLICAS).permitAll().anyRequest().authenticated())
-        .oauth2ResourceServer(
-            jwt ->
-                jwt.bearerTokenResolver(tokenDesdeCookie())
-                    .authenticationEntryPoint(responder401)
-                    .jwt(config -> config.jwtAuthenticationConverter(rolesDelToken())))
-        .exceptionHandling(
-            errores ->
-                errores.authenticationEntryPoint(responder401).accessDeniedHandler(responder403));
+        .oauth2ResourceServer(jwt ->
+            jwt.bearerTokenResolver(tokenDesdeCookie())
+                .authenticationEntryPoint(responder401)
+                .jwt(config -> config.jwtAuthenticationConverter(rolesDelToken())))
+        .exceptionHandling(errores ->
+            errores.authenticationEntryPoint(responder401).accessDeniedHandler(responder403));
     return http.build();
   }
 
