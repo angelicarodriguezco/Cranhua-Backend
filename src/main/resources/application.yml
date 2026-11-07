@@ -24,6 +24,13 @@ spring:
         speech: none
         transcription: none
 
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
 management:
   endpoints:
     web:

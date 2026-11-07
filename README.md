@@ -95,16 +95,16 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 
 ## Endpoints disponibles
 
-| Método | Ruta                        | Acceso  | Descripción                                                                                                                                                        |
-| ------ | --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`  | `/actuator/health`          | Público | Estado del servicio                                                                                                                                                |
-| `POST` | `/api/ai/chat`              | Sesión  | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                         |
-| `POST` | `/api/auth/registro`        | Público | Registro con correo. Body: `{"nombreCompleto", "correo", "contrasena", "roles": ["CAFETALERO"], "telefono"}`. Responde 201 con la cuenta y deja la sesión iniciada |
-| `POST` | `/api/auth/registro/google` | Público | Registro con Google. Body: `{"credencial": "<ID token>", "roles": [...]}`                                                                                          |
+| Método | Ruta                             | Acceso  | Descripción                                                                                                                                                                               |
+| ------ | -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/actuator/health`               | Público | Estado del servicio                                                                                                                                                                       |
+| `POST` | `/api/ai/chat`                   | Sesión  | Chat con Gemini. Body: `{"message": "..."}`. Respuesta: `{"reply": "..."}`                                                                                                                |
+| `POST` | `/api/auth/registro`             | Público | Registro con correo. Body: `{"nombreCompleto", "correo", "contrasena", "roles": ["CAFETALERO"], "telefono"}`. Responde 201 con la cuenta y deja la sesión iniciada                        |
+| `POST` | `/api/auth/registro/google`      | Público | Registro con Google. Body: `{"credencial": "<ID token>", "roles": [...]}`                                                                                                                 |
 | `POST` | `/api/auth/iniciarSesion`        | Público | Login con correo. Body: `{"correo", "contrasena"}`. Responde 200 con la cuenta y la cookie de sesión. Credenciales incorrectas o cuenta eliminada: 401 `Correo o contraseña incorrectos.` |
-| `POST` | `/api/auth/iniciarSesion/google` | Público | Login con Google. Body: `{"credencial": "<ID token>"}`. 401 si el token no es válido o no hay cuenta (activa) registrada con esa cuenta de Google |
-| `POST` | `/api/auth/cerrarSesion`         | Público | Borra la cookie de sesión. Responde 204                                                                                                            |
-| `GET`  | `/api/cuenta/actual`        | Sesión  | Cuenta de la sesión: `{id, nombreCompleto, correo, roles}`                                                                                                         |
+| `POST` | `/api/auth/iniciarSesion/google` | Público | Login con Google. Body: `{"credencial": "<ID token>"}`. 401 si el token no es válido o no hay cuenta (activa) registrada con esa cuenta de Google                                         |
+| `POST` | `/api/auth/cerrarSesion`         | Público | Borra la cookie de sesión. Responde 204                                                                                                                                                   |
+| `GET`  | `/api/cuenta/actual`             | Sesión  | Cuenta de la sesión: `{id, nombreCompleto, correo, roles}`                                                                                                                                |
 
 La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles` y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie.
 
