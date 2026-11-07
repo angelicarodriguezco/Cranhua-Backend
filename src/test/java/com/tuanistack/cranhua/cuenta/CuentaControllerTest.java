@@ -43,7 +43,8 @@ class CuentaControllerTest {
 
   private Cuenta guardarCuenta(String correo) {
     return cuentaRepository.saveAndFlush(
-        new Cuenta("Rodrigo Alvarado", correo, passwordEncoder.encode("Cafe2026!"), Set.of(Rol.TOSTADOR)));
+        new Cuenta(
+            "Rodrigo Alvarado", correo, passwordEncoder.encode("Cafe2026!"), Set.of(Rol.TOSTADOR)));
   }
 
   private Cookie iniciarSesion(String correo) throws Exception {

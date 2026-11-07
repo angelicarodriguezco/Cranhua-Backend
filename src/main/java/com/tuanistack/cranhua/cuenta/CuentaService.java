@@ -54,9 +54,7 @@ public class CuentaService {
   }
 
   private static List<RedSocial> aRedes(List<RedSocialRequest> redes) {
-    return redes.stream()
-        .map(red -> new RedSocial(red.tipo(), red.valor().strip()))
-        .toList();
+    return redes.stream().map(red -> new RedSocial(red.tipo(), red.valor().strip())).toList();
   }
 
   private static String enBlancoANull(String valor) {
