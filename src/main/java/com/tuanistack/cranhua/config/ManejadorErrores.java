@@ -3,10 +3,14 @@ package com.tuanistack.cranhua.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.tuanistack.cranhua.auth.CodigoInvalidoException;
 import com.tuanistack.cranhua.auth.CorreoEnUsoException;
 import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
 import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
 import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
+import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
+import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
+import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -45,6 +49,20 @@ public class ManejadorErrores {
     return new RespuestaError(DATOS_INVALIDOS, null);
   }
 
+  @ExceptionHandler(PerimetroInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError perimetroInvalido(PerimetroInvalidoException e) {
+    return new RespuestaError(DATOS_INVALIDOS, Map.of("perimetro", e.getMessage()));
+  }
+
+  public record RespuestaSuperposicion(String mensaje, ConflictoFinca conflicto) {}
+
+  @ExceptionHandler(FincaSuperpuestaException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaSuperposicion fincaSuperpuesta(FincaSuperpuestaException e) {
+    return new RespuestaSuperposicion(e.getMessage(), e.getConflicto());
+  }
+
   @ExceptionHandler(CorreoEnUsoException.class)
   @ResponseStatus(HttpStatus.CONFLICT)
   public RespuestaError correoEnUso(CorreoEnUsoException e) {
@@ -58,6 +76,12 @@ public class ManejadorErrores {
   })
   @ResponseStatus(HttpStatus.UNAUTHORIZED)
   public RespuestaError noAutorizado(RuntimeException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  @ExceptionHandler(CodigoInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError codigoInvalido(CodigoInvalidoException e) {
     return new RespuestaError(e.getMessage(), null);
   }
 }

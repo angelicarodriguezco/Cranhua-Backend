@@ -36,6 +36,10 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:?Falta GEMINI_API_KEY en .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
 
