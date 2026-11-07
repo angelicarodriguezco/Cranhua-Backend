@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
@@ -31,6 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,6 +52,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(BasePostgis.class)
 class AuthControllerTest {
 
   @Autowired private MockMvc mockMvc;
