@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.auth.CookieSesion;
 import jakarta.servlet.http.Cookie;
 import java.util.Set;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(BasePostgis.class)
 class CuentaControllerTest {
 
   @Autowired private MockMvc mockMvc;
