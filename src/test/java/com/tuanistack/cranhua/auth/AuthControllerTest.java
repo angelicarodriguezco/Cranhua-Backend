@@ -8,24 +8,42 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import jakarta.servlet.http.Cookie;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +52,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(BasePostgis.class)
 class AuthControllerTest {
 
   @Autowired private MockMvc mockMvc;
@@ -41,6 +60,10 @@ class AuthControllerTest {
   @Autowired private CuentaRepository cuentaRepository;
 
   @Autowired private PasswordEncoder passwordEncoder;
+
+  @Autowired private JwtEncoder jwtEncoder;
+
+  @Autowired private JwtDecoder jwtDecoder;
 
   @MockitoBean private VerificadorGoogle verificadorGoogle;
 
@@ -79,13 +102,48 @@ class AuthControllerTest {
         .andReturn();
   }
 
-  private static MockHttpSession sesionDe(MvcResult resultado) {
-    MockHttpSession sesion = (MockHttpSession) resultado.getRequest().getSession(false);
-    assertThat(sesion).isNotNull();
-    assertThat(
-            sesion.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY))
-        .isNotNull();
-    return sesion;
+  private MvcResult iniciarSesion(String correo, String contrasena) throws Exception {
+    return mockMvc
+        .perform(
+            post("/api/auth/iniciarSesion")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"correo": "%s", "contrasena": "%s"}
+                    """
+                        .formatted(correo, contrasena)))
+        .andReturn();
+  }
+
+  private MvcResult iniciarSesionConGoogle(String credencial) throws Exception {
+    return mockMvc
+        .perform(
+            post("/api/auth/iniciarSesion/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"credencial\": \"%s\"}".formatted(credencial)))
+        .andReturn();
+  }
+
+  private static Cookie cookieDe(MvcResult resultado) {
+    Cookie cookie = resultado.getResponse().getCookie(CookieSesion.NOMBRE);
+    assertThat(cookie).isNotNull();
+    assertThat(cookie.getValue()).isNotBlank();
+    return cookie;
+  }
+
+  private Cuenta guardarCuenta(String correo, Set<Rol> roles) {
+    return cuentaRepository.saveAndFlush(
+        new Cuenta("Rodrigo Alvarado", correo, passwordEncoder.encode("Cafe2026!"), roles));
+  }
+
+  private Cuenta guardarCuentaGoogle(String correo, String googleId) {
+    return cuentaRepository.saveAndFlush(
+        Cuenta.deGoogle("Andrés Solano", correo, googleId, null, Set.of(Rol.CAFETERIA)));
+  }
+
+  private void googleDevuelve(String credencial, String googleId, String correo) {
+    when(verificadorGoogle.verificar(credencial))
+        .thenReturn(Optional.of(new DatosGoogle(googleId, correo, "Andrés Solano", null)));
   }
 
   @Test
@@ -101,7 +159,7 @@ class AuthControllerTest {
     assertThat(passwordEncoder.matches("Cafe2026!", guardada.getContrasenaHash())).isTrue();
 
     mockMvc
-        .perform(get("/api/cuenta/actual").session(sesionDe(resultado)))
+        .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(guardada.getId().toString()))
         .andExpect(jsonPath("$.nombreCompleto").value("Rodrigo Alvarado"))
@@ -117,7 +175,7 @@ class AuthControllerTest {
 
     assertThat(resultado.getResponse().getStatus()).isEqualTo(201);
     mockMvc
-        .perform(get("/api/cuenta/actual").session(sesionDe(resultado)))
+        .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.roles", contains("CAFETALERO", "TOSTADOR", "CAFETERIA")));
   }
@@ -217,7 +275,7 @@ class AuthControllerTest {
     assertThat(guardada.getRoles()).containsExactly(Rol.CAFETERIA);
 
     mockMvc
-        .perform(get("/api/cuenta/actual").session(sesionDe(resultado)))
+        .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.correo").value("andres.solano@gmail.com"));
   }
@@ -257,5 +315,205 @@ class AuthControllerTest {
   @Test
   void cuentaActualSinSesionDa401() throws Exception {
     mockMvc.perform(get("/api/cuenta/actual")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void loginValidoDevuelveLaCookieConElJwt() throws Exception {
+    Cuenta cuenta = guardarCuenta("mariana@ejemplo.cr", EnumSet.allOf(Rol.class));
+
+    MvcResult resultado = iniciarSesion("  Mariana@Ejemplo.CR ", "Cafe2026!");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(200);
+    assertThat(resultado.getResponse().getContentAsString()).doesNotContain("contrasena", "$2a$");
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+        .startsWith(CookieSesion.NOMBRE + "=")
+        .contains("Path=/", "Max-Age=28800", "HttpOnly", "Secure", "SameSite=Strict");
+
+    mockMvc
+        .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(cuenta.getId().toString()))
+        .andExpect(jsonPath("$.roles", contains("CAFETALERO", "TOSTADOR", "CAFETERIA")));
+  }
+
+  @Test
+  void elJwtTraeTodosLosRolesYVenceEnOchoHoras() throws Exception {
+    Cuenta cuenta = guardarCuenta("lucia@ejemplo.cr", Set.of(Rol.TOSTADOR, Rol.CAFETERIA));
+
+    Jwt jwt =
+        jwtDecoder.decode(cookieDe(iniciarSesion("lucia@ejemplo.cr", "Cafe2026!")).getValue());
+
+    assertThat(jwt.getSubject()).isEqualTo(cuenta.getId().toString());
+    assertThat(jwt.getClaimAsStringList("roles")).containsExactly("TOSTADOR", "CAFETERIA");
+    assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()))
+        .isEqualTo(Duration.ofHours(8));
+  }
+
+  // Correo inexistente y contraseña equivocada tienen que verse exactamente igual
+  @ParameterizedTest(name = "{0} / {1}")
+  @CsvSource({
+    "rodrigo@ejemplo.cr, Equivocada1",
+    "noexiste@ejemplo.cr, Cafe2026!",
+    "rodrigo@ejemplo.cr, CAFE2026!"
+  })
+  void credencialesIncorrectasDan401ConMensajeGenerico(String correo, String contrasena)
+      throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr", Set.of(Rol.CAFETALERO));
+
+    MvcResult resultado = iniciarSesion(correo, contrasena);
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+    assertThat(resultado.getResponse().getContentAsString())
+        .isEqualTo("{\"mensaje\":\"Correo o contraseña incorrectos.\"}");
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE)).isNull();
+  }
+
+  @Test
+  void unaCuentaEliminadaNoPuedeIniciarSesion() throws Exception {
+    Cuenta cuenta = guardarCuenta("baja@ejemplo.cr", Set.of(Rol.TOSTADOR));
+    cuenta.eliminar();
+    cuentaRepository.saveAndFlush(cuenta);
+
+    MvcResult resultado = iniciarSesion("baja@ejemplo.cr", "Cafe2026!");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+    assertThat(resultado.getResponse().getContentAsString())
+        .contains("Correo o contraseña incorrectos.");
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE)).isNull();
+  }
+
+  @Test
+  void unaCuentaDeGoogleNoEntraConContrasena() throws Exception {
+    guardarCuentaGoogle("andres.solano@gmail.com", "google-sub-123");
+
+    MvcResult resultado = iniciarSesion("andres.solano@gmail.com", "Cafe2026!");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+    assertThat(resultado.getResponse().getContentAsString())
+        .contains("Correo o contraseña incorrectos.");
+  }
+
+  @Test
+  void loginSinDatosDa400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/iniciarSesion")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\": \" \"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.correo").value("Ingresá tu correo."))
+        .andExpect(jsonPath("$.errores.contrasena").value("Ingresá tu contraseña."));
+  }
+
+  @Test
+  void iniciaSesionConGoogle() throws Exception {
+    Cuenta cuenta = guardarCuentaGoogle("andres.solano@gmail.com", "google-sub-123");
+    googleDevuelve("token-valido", "google-sub-123", "andres.solano@gmail.com");
+
+    MvcResult resultado = iniciarSesionConGoogle("token-valido");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(200);
+    Jwt jwt = jwtDecoder.decode(cookieDe(resultado).getValue());
+    assertThat(jwt.getSubject()).isEqualTo(cuenta.getId().toString());
+    assertThat(jwt.getClaimAsStringList("roles")).containsExactly("CAFETERIA");
+  }
+
+  @Test
+  void googleSinCuentaRegistradaDa401() throws Exception {
+    googleDevuelve("token-valido", "google-sub-999", "nadie@gmail.com");
+
+    MvcResult resultado = iniciarSesionConGoogle("token-valido");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+    assertThat(resultado.getResponse().getContentAsString())
+        .contains("No hay una cuenta registrada con esa cuenta de Google.");
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE)).isNull();
+  }
+
+  @Test
+  void googleConCuentaEliminadaDa401() throws Exception {
+    Cuenta cuenta = guardarCuentaGoogle("andres.solano@gmail.com", "google-sub-123");
+    cuenta.eliminar();
+    cuentaRepository.saveAndFlush(cuenta);
+    googleDevuelve("token-valido", "google-sub-123", "andres.solano@gmail.com");
+
+    assertThat(iniciarSesionConGoogle("token-valido").getResponse().getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void googleConTokenInvalidoDa401() throws Exception {
+    when(verificadorGoogle.verificar("token-falso")).thenReturn(Optional.empty());
+
+    MvcResult resultado = iniciarSesionConGoogle("token-falso");
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
+    assertThat(resultado.getResponse().getContentAsString())
+        .contains("No se pudo verificar la cuenta de Google.");
+  }
+
+  @Test
+  void cerrarSesionBorraLaCookie() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr", Set.of(Rol.CAFETALERO));
+    Cookie sesion = cookieDe(iniciarSesion("rodrigo@ejemplo.cr", "Cafe2026!"));
+
+    MvcResult resultado =
+        mockMvc.perform(post("/api/auth/cerrarSesion").cookie(sesion)).andReturn();
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(204);
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+        .startsWith(CookieSesion.NOMBRE + "=;")
+        .contains("Path=/", "Max-Age=0", "HttpOnly", "Secure", "SameSite=Strict");
+  }
+
+  @Test
+  void tokenVencidoDa401() throws Exception {
+    Cuenta cuenta = guardarCuenta("rodrigo@ejemplo.cr", Set.of(Rol.CAFETALERO));
+    Instant haceNueveHoras = Instant.now().minus(Duration.ofHours(9));
+    String vencido =
+        firmar(jwtEncoder, cuenta, haceNueveHoras, haceNueveHoras.plus(Duration.ofHours(8)));
+
+    mockMvc
+        .perform(get("/api/cuenta/actual").cookie(new Cookie(CookieSesion.NOMBRE, vencido)))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void tokenFirmadoConOtraClaveDa401() throws Exception {
+    Cuenta cuenta = guardarCuenta("rodrigo@ejemplo.cr", Set.of(Rol.CAFETALERO));
+    byte[] otraClave = "otra-clave-que-no-es-la-del-backend!!".getBytes(StandardCharsets.UTF_8);
+    JwtEncoder otroEmisor =
+        new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(otraClave, "HmacSHA256")));
+    Instant ahora = Instant.now();
+    String falso = firmar(otroEmisor, cuenta, ahora, ahora.plus(Duration.ofHours(8)));
+
+    mockMvc
+        .perform(get("/api/cuenta/actual").cookie(new Cookie(CookieSesion.NOMBRE, falso)))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void unaCookieInvalidaNoImpideVolverAIniciarSesion() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr", Set.of(Rol.CAFETALERO));
+
+    mockMvc
+        .perform(
+            post("/api/auth/iniciarSesion")
+                .cookie(new Cookie(CookieSesion.NOMBRE, "basura"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\": \"rodrigo@ejemplo.cr\", \"contrasena\": \"Cafe2026!\"}"))
+        .andExpect(status().isOk());
+  }
+
+  private static String firmar(JwtEncoder emisor, Cuenta cuenta, Instant emitido, Instant vence) {
+    JwtClaimsSet claims =
+        JwtClaimsSet.builder()
+            .subject(cuenta.getId().toString())
+            .issuedAt(emitido)
+            .expiresAt(vence)
+            .claim("roles", List.of("CAFETALERO"))
+            .build();
+    return emisor
+        .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+        .getTokenValue();
   }
 }
