@@ -71,7 +71,7 @@ Si el contenedor `cranhua-backend` está corriendo, el puerto 8080 va a estar oc
 
 Las tablas no se crean a mano: al arrancar, el backend corre con Flyway las migraciones de `src/main/resources/db/migration` que falten. Después Hibernate valida que las entidades coincidan con las tablas (`ddl-auto: validate`) y, si no coinciden, el backend no arranca.
 
-Para cambiar el esquema se agrega un archivo nuevo con la siguiente versión, por ejemplo `V2__crear_finca.sql`. Nunca editar una migración que ya está en `develop`. El SQL tiene que funcionar en PostgreSQL y en el H2 de los tests.
+Para cambiar el esquema se agrega un archivo nuevo con la siguiente versión, por ejemplo `V4__crear_solicitud.sql`. Nunca editar una migración que ya está en `develop`.
 
 Para ver qué migraciones se aplicaron:
 
@@ -125,7 +125,7 @@ La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Se
 ./mvnw verify
 ```
 
-Los tests usan H2 en memoria con el perfil `test`, así que no necesitan Docker ni `.env`.
+Los tests levantan con Testcontainers un contenedor `postgis/postgis:17-3.5`, así que Docker Desktop tiene que estar abierto. No necesitan `.env`.
 
 El CI revisa el formato con google-java-format. Para no fallar ese check, instalar el plugin _google-java-format_ en IntelliJ y activarlo en _Settings > google-java-format Settings_.
 
