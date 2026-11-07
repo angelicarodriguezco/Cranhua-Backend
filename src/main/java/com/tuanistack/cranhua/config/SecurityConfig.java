@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,6 +18,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
@@ -25,6 +27,7 @@ import org.springframework.web.util.WebUtils;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
   private static final PathPatternRequestMatcher.Builder RUTA =
@@ -35,16 +38,14 @@ public class SecurityConfig {
           RUTA.matcher(HttpMethod.OPTIONS, "/**"),
           RUTA.matcher(HttpMethod.GET, "/actuator/health"),
           RUTA.matcher(HttpMethod.GET, "/actuator/health/**"),
-          RUTA.matcher(HttpMethod.POST, "/api/ai/chat"),
-          RUTA.matcher(HttpMethod.POST, "/api/auth/registro"),
-          RUTA.matcher(HttpMethod.POST, "/api/auth/registro/google"),
-          RUTA.matcher(HttpMethod.POST, "/api/auth/iniciarSesion"),
-          RUTA.matcher(HttpMethod.POST, "/api/auth/iniciarSesion/google"),
-          RUTA.matcher(HttpMethod.POST, "/api/auth/cerrarSesion"));
+          RUTA.matcher("/api/auth/**"),
+          RUTA.matcher("/api/publico/**"));
 
+  // Todo lo que no es público pide sesión; el rol de cada endpoint se valida con @PreAuthorize
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     HttpStatusEntryPoint responder401 = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
+    AccessDeniedHandler responder403 = (req, res, e) -> res.setStatus(HttpStatus.FORBIDDEN.value());
     http.csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
         .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -54,7 +55,8 @@ public class SecurityConfig {
             jwt.bearerTokenResolver(tokenDesdeCookie())
                 .authenticationEntryPoint(responder401)
                 .jwt(config -> config.jwtAuthenticationConverter(rolesDelToken())))
-        .exceptionHandling(errores -> errores.authenticationEntryPoint(responder401));
+        .exceptionHandling(errores ->
+            errores.authenticationEntryPoint(responder401).accessDeniedHandler(responder403));
     return http.build();
   }
 

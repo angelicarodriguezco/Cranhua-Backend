@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,17 +29,20 @@ public class CuentaController {
   }
 
   @GetMapping({"", "/actual"})
+  @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public CuentaResponse obtener(Authentication authentication) {
     return cuentaService.obtener(idDe(authentication));
   }
 
   @PatchMapping
+  @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public CuentaResponse actualizar(
       Authentication authentication, @Valid @RequestBody ActualizarCuentaRequest request) {
     return cuentaService.actualizar(idDe(authentication), request);
   }
 
   @DeleteMapping
+  @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public ResponseEntity<Void> eliminar(Authentication authentication) {
     cuentaService.eliminar(idDe(authentication));
     return ResponseEntity.noContent()
