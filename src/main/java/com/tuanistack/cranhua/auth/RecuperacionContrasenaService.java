@@ -70,7 +70,7 @@ public class RecuperacionContrasenaService {
             .orElseThrow(CodigoInvalidoException::new);
     if (guardado.vencido()) {
       codigoRepository.delete(guardado);
-      throw new CodigoInvalidoException();
+      throw new CodigoVencidoException();
     }
     if (!passwordEncoder.matches(codigo, guardado.getCodigoHash())) {
       if (guardado.registrarFallo() >= INTENTOS_MAXIMOS) {

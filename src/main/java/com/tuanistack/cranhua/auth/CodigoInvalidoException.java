@@ -3,6 +3,10 @@ package com.tuanistack.cranhua.auth;
 public class CodigoInvalidoException extends RuntimeException {
 
   public CodigoInvalidoException() {
-    super("El código no es válido o ya venció.");
+    this("El código es incorrecto.");
+  }
+
+  protected CodigoInvalidoException(String mensaje) {
+    super(mensaje);
   }
 }

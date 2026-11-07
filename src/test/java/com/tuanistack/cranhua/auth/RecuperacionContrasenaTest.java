@@ -151,14 +151,16 @@ class RecuperacionContrasenaTest {
 
     verificar("654321")
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.mensaje").value("El código no es válido o ya venció."));
+        .andExpect(jsonPath("$.mensaje").value("El código es incorrecto."));
   }
 
   @Test
   void codigoVencidoDa400() throws Exception {
     guardarCodigo(CODIGO, Instant.now().minusSeconds(1));
 
-    verificar(CODIGO).andExpect(status().isBadRequest());
+    verificar(CODIGO)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.mensaje").value("El código venció. Pedí uno nuevo."));
     assertThat(codigoRepository.count()).isZero();
   }
 
