@@ -164,7 +164,11 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.id").value(guardada.getId().toString()))
         .andExpect(jsonPath("$.nombreCompleto").value("Rodrigo Alvarado"))
         .andExpect(jsonPath("$.correo").value("rodrigo@ejemplo.cr"))
-        .andExpect(jsonPath("$.roles", contains("CAFETALERO")));
+        .andExpect(jsonPath("$.roles", contains("CAFETALERO")))
+        .andExpect(jsonPath("$.telefono").doesNotExist())
+        .andExpect(jsonPath("$.fotoUrl").doesNotExist())
+        .andExpect(jsonPath("$.redes").isArray())
+        .andExpect(jsonPath("$.redes").isEmpty());
   }
 
   @Test
@@ -277,7 +281,10 @@ class AuthControllerTest {
     mockMvc
         .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.correo").value("andres.solano@gmail.com"));
+        .andExpect(jsonPath("$.correo").value("andres.solano@gmail.com"))
+        .andExpect(jsonPath("$.fotoUrl").value("https://lh3.googleusercontent.com/a/foto"))
+        .andExpect(jsonPath("$.telefono").doesNotExist())
+        .andExpect(jsonPath("$.redes").isEmpty());
   }
 
   @Test
@@ -333,7 +340,10 @@ class AuthControllerTest {
         .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(cuenta.getId().toString()))
-        .andExpect(jsonPath("$.roles", contains("CAFETALERO", "TOSTADOR", "CAFETERIA")));
+        .andExpect(jsonPath("$.roles", contains("CAFETALERO", "TOSTADOR", "CAFETERIA")))
+        .andExpect(jsonPath("$.telefono").doesNotExist())
+        .andExpect(jsonPath("$.fotoUrl").doesNotExist())
+        .andExpect(jsonPath("$.redes").isEmpty());
   }
 
   @Test
