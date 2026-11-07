@@ -9,6 +9,9 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  # Las ramas se integran en cualquier orden: aplica una versión menor que llegue después
+  flyway:
+    out-of-order: true
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
