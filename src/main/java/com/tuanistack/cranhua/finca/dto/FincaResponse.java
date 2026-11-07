@@ -34,9 +34,14 @@ public record FincaResponse(
         finca.getCanton(),
         finca.getProvincia(),
         areaHectareas,
-        finca.getDuenos().stream()
-            .sorted(Comparator.comparing(Cuenta::getNombreCompleto))
-            .map(cuenta -> new Dueno(cuenta.getId(), cuenta.getNombreCompleto()))
-            .toList());
+        duenos(finca));
+  }
+
+  // Ordenados por nombre para que la respuesta y el mensaje del 409 salgan siempre igual
+  public static List<Dueno> duenos(Finca finca) {
+    return finca.getDuenos().stream()
+        .sorted(Comparator.comparing(Cuenta::getNombreCompleto).thenComparing(Cuenta::getId))
+        .map(cuenta -> new Dueno(cuenta.getId(), cuenta.getNombreCompleto()))
+        .toList();
   }
 }

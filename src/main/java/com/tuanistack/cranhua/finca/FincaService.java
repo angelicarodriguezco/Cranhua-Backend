@@ -41,7 +41,7 @@ public class FincaService {
               new ConflictoFinca(
                   otra.getId(),
                   otra.getNombre(),
-                  otra.getDuenos().stream().map(Cuenta::getNombreCompleto).sorted().toList(),
+                  FincaResponse.duenos(otra),
                   GeometriaUtil.puntos(otra.getPerimetro())));
         });
 

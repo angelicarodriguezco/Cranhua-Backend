@@ -17,6 +17,7 @@ import com.tuanistack.cranhua.auth.CookieSesion;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import com.tuanistack.cranhua.finca.dto.Coordenada;
 import jakarta.servlet.http.Cookie;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -283,13 +284,53 @@ class FincaControllerTest {
                 .value("El terreno se sobrepone con la finca \"Finca El Tucán\" de Lucía Mora."))
         .andExpect(jsonPath("$.conflicto.fincaId").value(idTucan))
         .andExpect(jsonPath("$.conflicto.nombre").value("Finca El Tucán"))
-        .andExpect(jsonPath("$.conflicto.duenos", contains("Lucía Mora")))
+        .andExpect(jsonPath("$.conflicto.duenos", hasSize(1)))
+        .andExpect(jsonPath("$.conflicto.duenos[0].id").value(lucia.getId().toString()))
+        .andExpect(jsonPath("$.conflicto.duenos[0].nombreCompleto").value("Lucía Mora"))
         .andExpect(jsonPath("$.conflicto.perimetro", hasSize(4)))
         .andExpect(jsonPath("$.conflicto.perimetro[0].lat").value(9.650))
         .andExpect(jsonPath("$.conflicto.perimetro[0].lng").value(-84.030))
         .andExpect(jsonPath("$.conflicto.perimetro[2].lat").value(9.660))
         .andExpect(jsonPath("$.conflicto.perimetro[2].lng").value(-84.020));
     assertThat(fincaRepository.count()).isEqualTo(1);
+  }
+
+  @Test
+  void losDuenosDelConflictoSalenOrdenadosPorNombre() throws Exception {
+    Cuenta zoe = cuenta("Zoe Quirós", "zoe@ejemplo.cr", Rol.CAFETALERO);
+    Cuenta carlos = cuenta("Carlos Brenes", "carlos@ejemplo.cr", Rol.CAFETALERO);
+    Finca tucan =
+        new Finca(
+            "Finca El Tucán",
+            GeometriaUtil.poligono(coordenadas(CUADRADO)),
+            GeometriaUtil.punto(new Coordenada(9.655, -84.025)),
+            "Tarrazú",
+            "San José");
+    tucan.agregarDueno(zoe);
+    tucan.agregarDueno(lucia);
+    tucan.agregarDueno(carlos);
+    fincaRepository.saveAndFlush(tucan);
+
+    registrar(andres, finca("Finca La Catalina", SOBREPUESTO))
+        .andExpect(status().isConflict())
+        .andExpect(
+            jsonPath("$.mensaje")
+                .value(
+                    "El terreno se sobrepone con la finca \"Finca El Tucán\" de Carlos Brenes,"
+                        + " Lucía Mora y Zoe Quirós."))
+        .andExpect(
+            jsonPath(
+                "$.conflicto.duenos[*].nombreCompleto",
+                contains("Carlos Brenes", "Lucía Mora", "Zoe Quirós")))
+        .andExpect(
+            jsonPath(
+                "$.conflicto.duenos[*].id",
+                contains(
+                    carlos.getId().toString(), lucia.getId().toString(), zoe.getId().toString())));
+  }
+
+  private static List<Coordenada> coordenadas(List<Map<String, Double>> puntos) {
+    return puntos.stream().map(p -> new Coordenada(p.get("lat"), p.get("lng"))).toList();
   }
 
   @Test
