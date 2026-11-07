@@ -3,6 +3,7 @@ package com.tuanistack.cranhua.config;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.tuanistack.cranhua.auth.CodigoInvalidoException;
 import com.tuanistack.cranhua.auth.CorreoEnUsoException;
 import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
 import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
@@ -58,6 +59,12 @@ public class ManejadorErrores {
   })
   @ResponseStatus(HttpStatus.UNAUTHORIZED)
   public RespuestaError noAutorizado(RuntimeException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  @ExceptionHandler(CodigoInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError codigoInvalido(CodigoInvalidoException e) {
     return new RespuestaError(e.getMessage(), null);
   }
 }

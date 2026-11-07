@@ -29,6 +29,10 @@ copy .env.example .env    # PowerShell / CMD
 | `POSTGRES_PASSWORD` | Contraseña de la base de datos                                                                                                                       | `Cranhua123`     |
 | `DB_PORT`           | Puerto de Postgres en la máquina. Cambiarlo (por ejemplo a `5433`) si ya hay otro Postgres usando el 5432.                                           | `5432`           |
 | `BACKEND_PORT`      | Puerto del backend en la máquina cuando corre en Docker                                                                                              | `8080`           |
+| `MAIL_HOST`         | Servidor SMTP para mandar los códigos de recuperación de contraseña                                                                                  | `smtp.gmail.com` |
+| `MAIL_PORT`         | Puerto SMTP (STARTTLS)                                                                                                                               | `587`            |
+| `MAIL_USERNAME`     | Cuenta que manda los correos; también es el remitente. Si queda vacía el backend levanta, pero los códigos no llegan.                                | (vacío)          |
+| `MAIL_PASSWORD`     | Contraseña SMTP. Con Gmail es una contraseña de aplicación, no la de la cuenta.                                                                      | (vacío)          |
 
 El `.env` está en `.gitignore`. No subirlo ni pegar llaves reales en issues o PRs. La llave de Gemini se saca en https://aistudio.google.com/apikey.
 
@@ -104,12 +108,15 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 | `POST` | `/api/auth/iniciarSesion`        | Público | Login con correo. Body: `{"correo", "contrasena"}`. Responde 200 con la cuenta y la cookie de sesión. Credenciales incorrectas o cuenta eliminada: 401 `Correo o contraseña incorrectos.` |
 | `POST` | `/api/auth/iniciarSesion/google` | Público | Login con Google. Body: `{"credencial": "<ID token>"}`. 401 si el token no es válido o no hay cuenta (activa) registrada con esa cuenta de Google                                         |
 | `POST` | `/api/auth/cerrarSesion`         | Público | Borra la cookie de sesión. Responde 204                                                                                                                                                   |
+| `POST` | `/api/auth/recuperar`            | Público | Body: `{"correo"}`. Si hay una cuenta activa con ese correo le manda un código de 6 dígitos que vence a los 10 minutos. Responde 204 siempre, exista o no el correo                     |
+| `POST` | `/api/auth/verificarCodigo`      | Público | Body: `{"correo", "codigo"}`. 204 si el código sirve (no lo gasta). Código equivocado o vencido: 400 `El código no es válido o ya venció.` Al quinto fallo el código se invalida         |
+| `POST` | `/api/auth/restablecer`          | Público | Body: `{"correo", "codigo", "contrasena"}`. La contraseña sigue las reglas del registro. Gasta el código, cierra todas las sesiones de la cuenta y borra la cookie. Responde 204           |
 | `GET`  | `/api/cuenta`                    | Sesión  | Perfil personal de la sesión: `{id, nombreCompleto, correo, roles, telefono, fotoUrl, redes}`                                                                                             |
 | `GET`  | `/api/cuenta/actual`             | Sesión  | Alias de `GET /api/cuenta` (compatibilidad)                                                                                                                                               |
 | `PATCH`| `/api/cuenta`                    | Sesión  | Actualiza campos editables del perfil (`nombreCompleto`, `telefono`, `fotoUrl`, `redes`). Body parcial; `redes` reemplaza la colección completa. Responde la cuenta actualizada           |
 | `DELETE`| `/api/cuenta`                   | Sesión  | Soft-delete de la cuenta y borra la cookie de sesión. Responde 204                                                                                                                        |
 
-La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles` y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie.
+La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles`, la versión de sesión de la cuenta en `version_sesion` (restablecer la contraseña la sube y deja sin efecto los tokens anteriores) y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie.
 
 ### Acceso por rol
 
