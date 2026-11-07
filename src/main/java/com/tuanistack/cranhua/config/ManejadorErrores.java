@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.tuanistack.cranhua.auth.CorreoEnUsoException;
+import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
+import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
 import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,9 +51,13 @@ public class ManejadorErrores {
     return new RespuestaError(e.getMessage(), null);
   }
 
-  @ExceptionHandler(GoogleNoVerificadoException.class)
+  @ExceptionHandler({
+    CredencialesInvalidasException.class,
+    GoogleNoVerificadoException.class,
+    CuentaGoogleNoRegistradaException.class
+  })
   @ResponseStatus(HttpStatus.UNAUTHORIZED)
-  public RespuestaError googleNoVerificado(GoogleNoVerificadoException e) {
+  public RespuestaError noAutorizado(RuntimeException e) {
     return new RespuestaError(e.getMessage(), null);
   }
 }
