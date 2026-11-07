@@ -2,8 +2,11 @@ package com.tuanistack.cranhua.auth;
 
 import com.tuanistack.cranhua.auth.dto.IniciarSesionGoogleRequest;
 import com.tuanistack.cranhua.auth.dto.IniciarSesionRequest;
+import com.tuanistack.cranhua.auth.dto.RecuperarContrasenaRequest;
 import com.tuanistack.cranhua.auth.dto.RegistroGoogleRequest;
 import com.tuanistack.cranhua.auth.dto.RegistroRequest;
+import com.tuanistack.cranhua.auth.dto.RestablecerContrasenaRequest;
+import com.tuanistack.cranhua.auth.dto.VerificarCodigoRequest;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.dto.CuentaResponse;
 import jakarta.validation.Valid;
@@ -21,14 +24,17 @@ public class AuthController {
 
   private final RegistroService registroService;
   private final InicioSesionService inicioSesionService;
+  private final RecuperacionContrasenaService recuperacionService;
   private final CookieSesion cookieSesion;
 
   public AuthController(
       RegistroService registroService,
       InicioSesionService inicioSesionService,
+      RecuperacionContrasenaService recuperacionService,
       CookieSesion cookieSesion) {
     this.registroService = registroService;
     this.inicioSesionService = inicioSesionService;
+    this.recuperacionService = recuperacionService;
     this.cookieSesion = cookieSesion;
   }
 
@@ -55,6 +61,28 @@ public class AuthController {
       @Valid @RequestBody IniciarSesionGoogleRequest request) {
     return conSesion(
         HttpStatus.OK, inicioSesionService.iniciarSesionConGoogle(request.credencial()));
+  }
+
+  // Responde igual exista o no el correo
+  @PostMapping("/recuperar")
+  public ResponseEntity<Void> recuperar(@Valid @RequestBody RecuperarContrasenaRequest request) {
+    recuperacionService.solicitar(request.correo());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/verificarCodigo")
+  public ResponseEntity<Void> verificarCodigo(@Valid @RequestBody VerificarCodigoRequest request) {
+    recuperacionService.verificar(request.correo(), request.codigo());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/restablecer")
+  public ResponseEntity<Void> restablecer(
+      @Valid @RequestBody RestablecerContrasenaRequest request) {
+    recuperacionService.restablecer(request.correo(), request.codigo(), request.contrasena());
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, cookieSesion.borrar().toString())
+        .build();
   }
 
   @PostMapping("/cerrarSesion")
