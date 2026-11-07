@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.config.SecurityConfig;
 import java.util.EnumSet;
 import java.util.Set;
@@ -12,15 +13,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
-// Usa el H2 del perfil test con el esquema de la migración de Flyway
+// Usa el PostGIS de Testcontainers con el esquema de las migraciones de Flyway
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
+@Import(BasePostgis.class)
 class CuentaRepositoryTest {
 
   private final PasswordEncoder passwordEncoder = new SecurityConfig().passwordEncoder();
