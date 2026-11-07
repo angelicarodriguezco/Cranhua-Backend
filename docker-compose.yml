@@ -35,8 +35,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?Falta GEMINI_API_KEY en .env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
 
 volumes:
   db_data:
+  
