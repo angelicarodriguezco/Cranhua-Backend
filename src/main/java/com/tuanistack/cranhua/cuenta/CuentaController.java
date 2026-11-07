@@ -3,6 +3,7 @@ package com.tuanistack.cranhua.cuenta;
 import com.tuanistack.cranhua.cuenta.dto.CuentaResponse;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,7 @@ public class CuentaController {
   }
 
   @GetMapping("/actual")
+  @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public CuentaResponse actual(Authentication authentication) {
     return cuentaRepository
         .findById(UUID.fromString(authentication.getName()))
