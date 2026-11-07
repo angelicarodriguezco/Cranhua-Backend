@@ -283,7 +283,12 @@ class FincaControllerTest {
                 .value("El terreno se sobrepone con la finca \"Finca El Tucán\" de Lucía Mora."))
         .andExpect(jsonPath("$.conflicto.fincaId").value(idTucan))
         .andExpect(jsonPath("$.conflicto.nombre").value("Finca El Tucán"))
-        .andExpect(jsonPath("$.conflicto.duenos", contains("Lucía Mora")));
+        .andExpect(jsonPath("$.conflicto.duenos", contains("Lucía Mora")))
+        .andExpect(jsonPath("$.conflicto.perimetro", hasSize(4)))
+        .andExpect(jsonPath("$.conflicto.perimetro[0].lat").value(9.650))
+        .andExpect(jsonPath("$.conflicto.perimetro[0].lng").value(-84.030))
+        .andExpect(jsonPath("$.conflicto.perimetro[2].lat").value(9.660))
+        .andExpect(jsonPath("$.conflicto.perimetro[2].lng").value(-84.020));
     assertThat(fincaRepository.count()).isEqualTo(1);
   }
 
