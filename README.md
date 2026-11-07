@@ -75,7 +75,9 @@ Si el contenedor `cranhua-backend` está corriendo, el puerto 8080 va a estar oc
 
 Las tablas no se crean a mano: al arrancar, el backend corre con Flyway las migraciones de `src/main/resources/db/migration` que falten. Después Hibernate valida que las entidades coincidan con las tablas (`ddl-auto: validate`) y, si no coinciden, el backend no arranca.
 
-Para cambiar el esquema se agrega un archivo nuevo con la siguiente versión, por ejemplo `V4__crear_solicitud.sql`. Nunca editar una migración que ya está en `develop`.
+Para cambiar el esquema se agrega un archivo nuevo cuya versión es la fecha y hora en que se crea, por ejemplo `V20261108_0915__crear_solicitud.sql`. Así dos ramas abiertas al mismo tiempo nunca usan la misma versión, y como Flyway corre con `out-of-order`, se pueden integrar en cualquier orden.
+
+Nunca editar, renombrar ni borrar una migración que ya está en `develop`: las bases que ya la aplicaron dejan de arrancar. Si hay un choque, se cambia la migración de la rama que todavía no se integra. El CI revisa las dos cosas en cada PR.
 
 Para ver qué migraciones se aplicaron:
 
