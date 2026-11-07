@@ -42,7 +42,6 @@ public class Cuenta {
   @Column(name = "foto_url", length = 500)
   private String fotoUrl;
 
-  // Las cuentas de Google no tienen contraseña; la base exige una de las dos
   @Column(name = "contrasena_hash", length = 100)
   private String contrasenaHash;
 
@@ -64,7 +63,7 @@ public class Cuenta {
   @Column(name = "rol", nullable = false, length = 20)
   private Set<Rol> roles = new HashSet<>();
 
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "cuenta_red_social", joinColumns = @JoinColumn(name = "cuenta_id"))
   private List<RedSocial> redes = new ArrayList<>();
 
@@ -100,10 +99,18 @@ public class Cuenta {
     correo = normalizarCorreo(correo);
   }
 
-  // Borrado lógico: la fila se conserva para no romper la trazabilidad
   public void eliminar() {
     eliminada = true;
     eliminadaEn = Instant.now();
+  }
+
+  public void actualizarPerfil(
+      String nombreCompleto, String telefono, String fotoUrl, List<RedSocial> redes) {
+    this.nombreCompleto = nombreCompleto;
+    this.telefono = telefono;
+    this.fotoUrl = fotoUrl;
+    this.redes.clear();
+    this.redes.addAll(redes);
   }
 
   public UUID getId() {
