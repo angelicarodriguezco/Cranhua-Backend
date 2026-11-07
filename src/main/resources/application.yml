@@ -9,6 +9,17 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  # Las ramas se integran en cualquier orden: aplica una versión menor que llegue después
+  flyway:
+    out-of-order: true
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
   ai:
     google:
       genai:
@@ -36,6 +47,10 @@ management:
     web:
       exposure:
         include: health
+  # Sin SMTP configurado el backend tiene que seguir saliendo como UP
+  health:
+    mail:
+      enabled: false
 
 app:
   cors:
@@ -45,4 +60,5 @@ app:
   sesion:
     secreto: ${JWT_SECRET:}
     duracion: 8h
-    
+  correo:
+    remitente: ${MAIL_USERNAME:}

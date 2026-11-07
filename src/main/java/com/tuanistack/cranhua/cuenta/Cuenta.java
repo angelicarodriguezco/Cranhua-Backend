@@ -57,6 +57,10 @@ public class Cuenta {
   @Column(name = "creada_en", nullable = false, updatable = false)
   private Instant creadaEn;
 
+  // Va en el token de sesión; subirla invalida las sesiones abiertas
+  @Column(name = "version_sesion", nullable = false)
+  private int versionSesion;
+
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "cuenta_rol", joinColumns = @JoinColumn(name = "cuenta_id"))
   @Enumerated(EnumType.STRING)
@@ -102,6 +106,11 @@ public class Cuenta {
   public void eliminar() {
     eliminada = true;
     eliminadaEn = Instant.now();
+  }
+
+  public void cambiarContrasena(String contrasenaHash) {
+    this.contrasenaHash = contrasenaHash;
+    versionSesion++;
   }
 
   public void actualizarPerfil(
@@ -171,6 +180,10 @@ public class Cuenta {
 
   public Instant getCreadaEn() {
     return creadaEn;
+  }
+
+  public int getVersionSesion() {
+    return versionSesion;
   }
 
   public Set<Rol> getRoles() {

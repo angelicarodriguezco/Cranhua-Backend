@@ -17,6 +17,7 @@ public class CookieSesion {
 
   public static final String NOMBRE = "cranhua_sesion";
   public static final String CLAIM_ROLES = "roles";
+  public static final String CLAIM_VERSION = "version_sesion";
 
   private final JwtEncoder jwtEncoder;
   private final Duration duracion;
@@ -35,6 +36,7 @@ public class CookieSesion {
             .issuedAt(ahora)
             .expiresAt(ahora.plus(duracion))
             .claim(CLAIM_ROLES, cuenta.getRoles().stream().sorted().map(Rol::name).toList())
+            .claim(CLAIM_VERSION, cuenta.getVersionSesion())
             .build();
     JwsHeader cabecera = JwsHeader.with(MacAlgorithm.HS256).build();
     String token = jwtEncoder.encode(JwtEncoderParameters.from(cabecera, claims)).getTokenValue();
