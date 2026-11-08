@@ -5,12 +5,14 @@ import com.tuanistack.cranhua.auth.dto.RegistroRequest;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class RegistroService {
@@ -18,17 +20,24 @@ public class RegistroService {
   private final CuentaRepository cuentaRepository;
   private final PasswordEncoder passwordEncoder;
   private final VerificadorGoogle verificadorGoogle;
+  private final AlmacenamientoImagenes almacenamientoImagenes;
 
   public RegistroService(
       CuentaRepository cuentaRepository,
       PasswordEncoder passwordEncoder,
-      VerificadorGoogle verificadorGoogle) {
+      VerificadorGoogle verificadorGoogle,
+      AlmacenamientoImagenes almacenamientoImagenes) {
     this.cuentaRepository = cuentaRepository;
     this.passwordEncoder = passwordEncoder;
     this.verificadorGoogle = verificadorGoogle;
+    this.almacenamientoImagenes = almacenamientoImagenes;
   }
 
   public Cuenta registrar(RegistroRequest request) {
+    return registrar(request, null);
+  }
+
+  public Cuenta registrar(RegistroRequest request, MultipartFile foto) {
     String correo = Cuenta.normalizarCorreo(request.correo());
     validarCorreoLibre(correo);
 
@@ -41,7 +50,12 @@ public class RegistroService {
     if (request.telefono() != null && !request.telefono().isBlank()) {
       cuenta.setTelefono(request.telefono().strip());
     }
-    return guardar(cuenta);
+    Cuenta guardada = guardar(cuenta);
+    if (foto != null && !foto.isEmpty()) {
+      guardada.setFotoUrl(almacenamientoImagenes.subirFoto(foto));
+      return cuentaRepository.saveAndFlush(guardada);
+    }
+    return guardada;
   }
 
   public Cuenta registrarConGoogle(RegistroGoogleRequest request) {

@@ -42,6 +42,9 @@ public class Cuenta {
   @Column(name = "foto_url", length = 500)
   private String fotoUrl;
 
+  @Column(name = "banner_url", length = 500)
+  private String bannerUrl;
+
   @Column(name = "contrasena_hash", length = 100)
   private String contrasenaHash;
 
@@ -114,10 +117,15 @@ public class Cuenta {
   }
 
   public void actualizarPerfil(
-      String nombreCompleto, String telefono, String fotoUrl, List<RedSocial> redes) {
+      String nombreCompleto,
+      String telefono,
+      String fotoUrl,
+      String bannerUrl,
+      List<RedSocial> redes) {
     this.nombreCompleto = nombreCompleto;
     this.telefono = telefono;
     this.fotoUrl = fotoUrl;
+    this.bannerUrl = bannerUrl;
     this.redes.clear();
     this.redes.addAll(redes);
   }
@@ -156,6 +164,14 @@ public class Cuenta {
 
   public void setFotoUrl(String fotoUrl) {
     this.fotoUrl = fotoUrl;
+  }
+
+  public String getBannerUrl() {
+    return bannerUrl;
+  }
+
+  public void setBannerUrl(String bannerUrl) {
+    this.bannerUrl = bannerUrl;
   }
 
   public String getContrasenaHash() {

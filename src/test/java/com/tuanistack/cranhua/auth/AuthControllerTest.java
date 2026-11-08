@@ -2,8 +2,12 @@ package com.tuanistack.cranhua.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,6 +17,7 @@ import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -34,7 +39,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -48,6 +55,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.server.ResponseStatusException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -66,6 +74,8 @@ class AuthControllerTest {
   @Autowired private JwtDecoder jwtDecoder;
 
   @MockitoBean private VerificadorGoogle verificadorGoogle;
+
+  @MockitoBean private AlmacenamientoImagenes almacenamientoImagenes;
 
   @AfterEach
   void limpiar() {
@@ -182,6 +192,80 @@ class AuthControllerTest {
         .perform(get("/api/cuenta/actual").cookie(cookieDe(resultado)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.roles", contains("CAFETALERO", "TOSTADOR", "CAFETERIA")));
+  }
+
+  @Test
+  void registraMultipartConFotoOpcional() throws Exception {
+    MockMultipartFile datos =
+        new MockMultipartFile(
+            "datos",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            registroValido("foto@ejemplo.cr", "[\"TOSTADOR\"]").getBytes(StandardCharsets.UTF_8));
+    MockMultipartFile foto =
+        new MockMultipartFile("foto", "perfil.webp", "image/webp", new byte[] {9, 8, 7});
+
+    when(almacenamientoImagenes.subirFoto(any()))
+        .thenReturn("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/reg.webp");
+
+    MvcResult resultado =
+        mockMvc
+            .perform(multipart("/api/auth/registro").file(datos).file(foto))
+            .andExpect(status().isCreated())
+            .andExpect(
+                jsonPath("$.fotoUrl")
+                    .value(
+                        "https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/reg.webp"))
+            .andReturn();
+
+    Cuenta guardada =
+        cuentaRepository.findByCorreoAndEliminadaFalse("foto@ejemplo.cr").orElseThrow();
+    assertThat(guardada.getFotoUrl())
+        .isEqualTo("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/reg.webp");
+    assertThat(resultado.getResponse().getCookie(CookieSesion.NOMBRE)).isNotNull();
+    verify(almacenamientoImagenes).subirFoto(any());
+  }
+
+  @Test
+  void registraMultipartSinFotoNoSubeImagen() throws Exception {
+    MockMultipartFile datos =
+        new MockMultipartFile(
+            "datos",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            registroValido("sin-foto@ejemplo.cr", "[\"CAFETERIA\"]")
+                .getBytes(StandardCharsets.UTF_8));
+
+    mockMvc
+        .perform(multipart("/api/auth/registro").file(datos))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.fotoUrl").doesNotExist());
+
+    verify(almacenamientoImagenes, never()).subirFoto(any());
+  }
+
+  @Test
+  void registraMultipartConMimeInvalidoDa400() throws Exception {
+    MockMultipartFile datos =
+        new MockMultipartFile(
+            "datos",
+            "",
+            MediaType.APPLICATION_JSON_VALUE,
+            registroValido("mime-malo@ejemplo.cr", "[\"TOSTADOR\"]")
+                .getBytes(StandardCharsets.UTF_8));
+    MockMultipartFile foto =
+        new MockMultipartFile("foto", "doc.pdf", "application/pdf", new byte[] {1});
+
+    when(almacenamientoImagenes.subirFoto(any()))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Solo se aceptan imágenes JPG, PNG o WebP."));
+
+    mockMvc
+        .perform(multipart("/api/auth/registro").file(datos).file(foto))
+        .andExpect(status().isBadRequest());
+
+    verify(almacenamientoImagenes).subirFoto(any());
   }
 
   @Test
