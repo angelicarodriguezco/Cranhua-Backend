@@ -3,10 +3,13 @@ package com.tuanistack.cranhua.finca;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,6 +23,8 @@ import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
 import jakarta.servlet.http.Cookie;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +75,13 @@ class FincaControllerTest {
           punto(9.660, -84.010),
           punto(9.660, -84.020));
 
+  private static final List<Map<String, Double>> LEJANO =
+      List.of(
+          punto(9.700, -84.100),
+          punto(9.700, -84.090),
+          punto(9.710, -84.090),
+          punto(9.710, -84.100));
+
   @Autowired private MockMvc mockMvc;
 
   @Autowired private ObjectMapper objectMapper;
@@ -79,6 +91,8 @@ class FincaControllerTest {
   @Autowired private CuentaRepository cuentaRepository;
 
   @Autowired private FincaRepository fincaRepository;
+
+  @Autowired private CosechaRepository cosechaRepository;
 
   private Cuenta andres;
 
@@ -92,6 +106,7 @@ class FincaControllerTest {
 
   @AfterEach
   void limpiar() {
+    cosechaRepository.deleteAll();
     fincaRepository.deleteAll();
     cuentaRepository.deleteAll();
   }
@@ -547,5 +562,248 @@ class FincaControllerTest {
     mockMvc
         .perform(delete("/api/fincas/{id}/duenos/{cuentaId}", finca.getId(), lucia.getId()))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void misFincasDevuelveSoloLasDelUsuarioSinEliminadas() throws Exception {
+    // Se registran fuera del orden por nombre para comprobar que no salen por fecha
+    registrar(andres, finca("Finca La Catalina", CUADRADO)).andExpect(status().isCreated());
+    registrar(andres, finca("Finca El Roble", COLINDANTE)).andExpect(status().isCreated());
+    registrar(andres, finca("Finca Alta Vista", LEJANO)).andExpect(status().isCreated());
+    Finca eliminada = fincaDe(andres);
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+    fincaDe(lucia);
+
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$[*].nombre", contains("Finca Alta Vista", "Finca El Roble", "Finca La Catalina")))
+        .andExpect(jsonPath("$[0].areaHectareas", greaterThan(0.0)))
+        .andExpect(jsonPath("$[0].duenos[*].nombreCompleto", contains("Andrés Solano")));
+  }
+
+  @Test
+  void misFincasIncluyeLasCompartidas() throws Exception {
+    Finca finca = fincaDe(andres);
+    agregarDueno(andres, finca.getId(), "lucia@ejemplo.cr").andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(lucia)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].id", contains(finca.getId().toString())));
+  }
+
+  @Test
+  void misFincasSinFincasDevuelveListaVacia() throws Exception {
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(0)));
+  }
+
+  @Test
+  void misFincasPideSesionYRolCafetalero() throws Exception {
+    Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+
+    mockMvc.perform(get("/api/fincas")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/fincas").cookie(sesion(tostador))).andExpect(status().isForbidden());
+  }
+
+  @Test
+  void obtenerUnaFincaPropia() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(finca.getId().toString()))
+        .andExpect(jsonPath("$.nombre").value("Finca La Catalina"))
+        .andExpect(jsonPath("$.perimetro", hasSize(4)))
+        .andExpect(jsonPath("$.duenos[*].nombreCompleto", contains("Andrés Solano")));
+  }
+
+  @Test
+  void obtenerUnaFincaAjenaDa403() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}", finca.getId()).cookie(sesion(lucia)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.mensaje").value("Solo un dueño de la finca puede verla."));
+  }
+
+  @Test
+  void obtenerUnaFincaInexistenteOEliminadaDa404() throws Exception {
+    Finca eliminada = fincaDe(andres);
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+
+    for (UUID id : List.of(UUID.randomUUID(), eliminada.getId())) {
+      mockMvc
+          .perform(get("/api/fincas/{id}", id).cookie(sesion(andres)))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+    }
+  }
+
+  // Sin kgDisponibles queda en beneficiado; con kgDisponibles queda DISPONIBLE
+  private Cosecha cosecha(Finca finca, String variedad, LocalDate inicio, String kgDisponibles) {
+    Cosecha cosecha =
+        new Cosecha(
+            finca,
+            variedad,
+            1450,
+            inicio,
+            inicio.plusMonths(1),
+            new BigDecimal("1200.00"),
+            new BigDecimal("9.75"),
+            List.of(
+                new ProcesoReparto(Proceso.ANAEROBICO, 40),
+                new ProcesoReparto(Proceso.RED_HONEY, 60)));
+    if (kgDisponibles != null) {
+      cosecha.registrarPesoTrasSeleccion(new BigDecimal(kgDisponibles));
+    }
+    return cosechaRepository.saveAndFlush(cosecha);
+  }
+
+  @Test
+  void misFincasTraeElResumenDeCosechasDisponibles() throws Exception {
+    Finca conCosechas = fincaDe(andres);
+    cosecha(conCosechas, "Caturra", LocalDate.of(2026, 1, 5), "300.50");
+    cosecha(conCosechas, "Geisha", LocalDate.of(2026, 2, 5), "100.00");
+    Cosecha vendida = cosecha(conCosechas, "Catuaí", LocalDate.of(2026, 3, 5), "50.00");
+    vendida.descontarDisponible(new BigDecimal("50.00"));
+    cosechaRepository.saveAndFlush(vendida);
+    cosecha(conCosechas, "Villa Sarchí", LocalDate.of(2026, 4, 5), null);
+    registrar(andres, finca("Finca El Roble", LEJANO)).andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].nombre", contains("Finca El Roble", "Finca La Catalina")))
+        .andExpect(jsonPath("$[0].cosechasActivas").value(0))
+        .andExpect(jsonPath("$[0].kgDisponibles").value(0))
+        .andExpect(jsonPath("$[0].areaHectareas", closeTo(121.0, 1.0)))
+        .andExpect(jsonPath("$[1].cosechasActivas").value(2))
+        .andExpect(jsonPath("$[1].kgDisponibles").value(400.5))
+        .andExpect(jsonPath("$[1].areaHectareas", closeTo(121.0, 1.0)))
+        .andExpect(jsonPath("$[1].cosechas").doesNotExist());
+  }
+
+  @Test
+  void obtenerTraeLasCosechasConSuProcesoPrincipal() throws Exception {
+    Finca finca = fincaDe(andres);
+    Cosecha disponible = cosecha(finca, "Caturra", LocalDate.of(2026, 1, 5), "300.00");
+    disponible.setCodigoLote("crh-2026-0001");
+    cosechaRepository.saveAndFlush(disponible);
+    cosecha(finca, "Geisha", LocalDate.of(2026, 3, 5), null);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cosechasActivas").doesNotExist())
+        .andExpect(jsonPath("$.cosechas[*].variedad", contains("Geisha", "Caturra")))
+        .andExpect(jsonPath("$.cosechas[0].procesoPrincipal").value("Red honey"))
+        .andExpect(jsonPath("$.cosechas[0].estado").value("EN_BENEFICIADO"))
+        .andExpect(jsonPath("$.cosechas[0].kgDisponibles").value(nullValue()))
+        .andExpect(jsonPath("$.cosechas[0].codigoLote").value(nullValue()))
+        .andExpect(jsonPath("$.cosechas[1].id").value(disponible.getId().toString()))
+        .andExpect(jsonPath("$.cosechas[1].codigoLote").value("CRH-2026-0001"))
+        .andExpect(jsonPath("$.cosechas[1].estado").value("DISPONIBLE"))
+        .andExpect(jsonPath("$.cosechas[1].kgDisponibles").value(300.0))
+        .andExpect(jsonPath("$.cosechas[1].precioKg").value(9.75));
+  }
+
+  @Test
+  void obtenerSinCosechasDevuelveListaVacia() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cosechas", hasSize(0)));
+  }
+
+  @Test
+  void cosechasDeUnaFincaPropia() throws Exception {
+    Finca finca = fincaDe(andres);
+    Cosecha cosecha = cosecha(finca, "Caturra", LocalDate.of(2026, 1, 5), "300.00");
+    Finca ajena = fincaDe(lucia);
+    cosecha(ajena, "Geisha", LocalDate.of(2026, 1, 5), null);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}/cosechas", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$[0].id").value(cosecha.getId().toString()))
+        .andExpect(jsonPath("$[0].fincaId").value(finca.getId().toString()))
+        .andExpect(jsonPath("$[0].variedad").value("Caturra"))
+        .andExpect(jsonPath("$[0].alturaMsnm").value(1450))
+        .andExpect(jsonPath("$[0].fechaInicio").value("2026-01-05"))
+        .andExpect(jsonPath("$[0].fechaFin").value("2026-02-05"))
+        .andExpect(
+            jsonPath("$[0].procesos[*].proceso", containsInAnyOrder("Anaeróbico", "Red honey")))
+        .andExpect(jsonPath("$[0].procesos[*].porcentaje", containsInAnyOrder(40, 60)))
+        .andExpect(jsonPath("$[0].cantidadCosechadaKg").value(1200.0))
+        .andExpect(jsonPath("$[0].pesoTrasSeleccionKg").value(300.0))
+        .andExpect(jsonPath("$[0].precioKg").value(9.75))
+        .andExpect(jsonPath("$[0].kgDisponibles").value(300.0))
+        .andExpect(jsonPath("$[0].estado").value("DISPONIBLE"))
+        .andExpect(jsonPath("$[0].pesoTrasBeneficiadoKg").value(nullValue()))
+        .andExpect(jsonPath("$[0].caracolilloKg").value(nullValue()))
+        .andExpect(jsonPath("$[0].notasSabor").value(nullValue()))
+        .andExpect(jsonPath("$[0].puntajeSca").value(nullValue()))
+        .andExpect(jsonPath("$[0].codigoLote").value(nullValue()))
+        .andExpect(jsonPath("$[0].fincaNombre").doesNotExist());
+  }
+
+  @Test
+  void cosechasDeUnaFincaSinCosechasDevuelveListaVacia() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}/cosechas", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(0)));
+  }
+
+  @Test
+  void cosechasDeUnaFincaAjenaDa403() throws Exception {
+    Finca finca = fincaDe(lucia);
+
+    mockMvc
+        .perform(get("/api/fincas/{id}/cosechas", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.mensaje").value("Solo un dueño de la finca puede verla."));
+  }
+
+  @Test
+  void cosechasDeUnaFincaInexistenteOEliminadaDa404() throws Exception {
+    Finca eliminada = fincaDe(andres);
+    cosecha(eliminada, "Caturra", LocalDate.of(2026, 1, 5), null);
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+
+    for (UUID id : List.of(UUID.randomUUID(), eliminada.getId())) {
+      mockMvc
+          .perform(get("/api/fincas/{id}/cosechas", id).cookie(sesion(andres)))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+    }
+  }
+
+  @Test
+  void consultarUnaFincaPideSesionYRolCafetalero() throws Exception {
+    Finca finca = fincaDe(andres);
+    Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+
+    for (String ruta :
+        List.of("/api/fincas/" + finca.getId(), "/api/fincas/" + finca.getId() + "/cosechas")) {
+      mockMvc.perform(get(ruta)).andExpect(status().isUnauthorized());
+      mockMvc.perform(get(ruta).cookie(sesion(tostador))).andExpect(status().isForbidden());
+    }
   }
 }

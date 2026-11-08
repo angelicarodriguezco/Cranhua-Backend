@@ -5,9 +5,14 @@ import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
+import com.tuanistack.cranhua.finca.dto.CosechaResponse;
 import com.tuanistack.cranhua.finca.dto.FincaResponse;
 import com.tuanistack.cranhua.finca.dto.RegistrarFincaRequest;
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.locationtech.jts.geom.Polygon;
 import org.springframework.http.HttpStatus;
@@ -20,10 +25,15 @@ public class FincaService {
 
   private final FincaRepository fincaRepository;
   private final CuentaRepository cuentaRepository;
+  private final CosechaRepository cosechaRepository;
 
-  public FincaService(FincaRepository fincaRepository, CuentaRepository cuentaRepository) {
+  public FincaService(
+      FincaRepository fincaRepository,
+      CuentaRepository cuentaRepository,
+      CosechaRepository cosechaRepository) {
     this.fincaRepository = fincaRepository;
     this.cuentaRepository = cuentaRepository;
+    this.cosechaRepository = cosechaRepository;
   }
 
   @Transactional
@@ -61,6 +71,58 @@ public class FincaService {
     return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()));
   }
 
+  @Transactional(readOnly = true)
+  public List<FincaResponse> misFincas(UUID cuentaId) {
+    List<Finca> fincas =
+        fincaRepository.findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(cuentaId);
+    if (fincas.isEmpty()) {
+      return List.of();
+    }
+    List<UUID> ids = fincas.stream().map(Finca::getId).toList();
+    Map<UUID, BigDecimal> areas = new HashMap<>();
+    fincaRepository
+        .areasHectareas(ids)
+        .forEach(fila -> areas.put((UUID) fila[0], (BigDecimal) fila[1]));
+    Map<UUID, Object[]> resumenes = new HashMap<>();
+    cosechaRepository
+        .resumenDisponibles(ids, EstadoCosecha.DISPONIBLE)
+        .forEach(fila -> resumenes.put((UUID) fila[0], fila));
+
+    return fincas.stream()
+        .map(finca -> {
+          Object[] resumen = resumenes.get(finca.getId());
+          return FincaResponse.de(finca, areas.get(finca.getId()))
+              .conResumen(
+                  resumen == null ? 0 : (Long) resumen[1],
+                  resumen == null ? BigDecimal.ZERO : (BigDecimal) resumen[2]);
+        })
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public FincaResponse obtener(UUID fincaId, UUID cuentaId) {
+    Finca finca = fincaVisible(fincaId, cuentaId);
+    return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()))
+        .conCosechas(cosechaRepository.findByFincaIdOrderByFechaInicioDescIdAsc(fincaId));
+  }
+
+  @Transactional(readOnly = true)
+  public List<CosechaResponse> cosechas(UUID fincaId, UUID cuentaId) {
+    fincaVisible(fincaId, cuentaId);
+    return cosechaRepository.findByFincaIdOrderByFechaInicioDescIdAsc(fincaId).stream()
+        .map(CosechaResponse::de)
+        .toList();
+  }
+
+  private Finca fincaVisible(UUID fincaId, UUID cuentaId) {
+    Finca finca = fincaExistente(fincaId);
+    if (!finca.esDueno(cuentaId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede verla.");
+    }
+    return finca;
+  }
+
   @Transactional
   public FincaResponse agregarDueno(UUID fincaId, String correo, UUID cuentaId) {
     Finca finca = fincaAdministrable(fincaId, cuentaId);
@@ -91,12 +153,15 @@ public class FincaService {
     return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()));
   }
 
+  private Finca fincaExistente(UUID fincaId) {
+    return fincaRepository
+        .findByIdAndEliminadaFalse(fincaId)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa finca."));
+  }
+
   private Finca fincaAdministrable(UUID fincaId, UUID cuentaId) {
-    Finca finca =
-        fincaRepository
-            .findByIdAndEliminadaFalse(fincaId)
-            .orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa finca."));
+    Finca finca = fincaExistente(fincaId);
     if (!finca.esDueno(cuentaId)) {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede administrar sus dueños.");
