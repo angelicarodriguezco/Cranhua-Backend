@@ -4,4 +4,4 @@ import java.util.List;
 import java.util.UUID;
 
 public record ConflictoFinca(
-    UUID fincaId, String nombre, List<String> duenos, List<Coordenada> perimetro) {}
+    UUID fincaId, String nombre, List<FincaResponse.Dueno> duenos, List<Coordenada> perimetro) {}
