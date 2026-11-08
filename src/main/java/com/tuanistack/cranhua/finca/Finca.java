@@ -97,6 +97,13 @@ public class Finca {
     duenos.add(cuenta);
   }
 
+  public void quitarDueno(UUID cuentaId) {
+    if (esDueno(cuentaId) && duenos.size() == 1) {
+      throw new UltimoDuenoException();
+    }
+    duenos.removeIf(cuenta -> cuenta.getId().equals(cuentaId));
+  }
+
   public boolean esDueno(UUID cuentaId) {
     return duenos.stream().anyMatch(cuenta -> cuenta.getId().equals(cuentaId));
   }

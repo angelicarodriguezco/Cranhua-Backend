@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ public enum Proceso {
     this.nombre = nombre;
   }
 
+  @JsonValue
   public String getNombre() {
     return nombre;
   }
