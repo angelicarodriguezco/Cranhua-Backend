@@ -196,6 +196,11 @@ public class NegocioTueste {
     return estilos;
   }
 
+  public void setEstilos(Set<NivelTueste> estilos) {
+    this.estilos.clear();
+    this.estilos.addAll(estilos);
+  }
+
   public String getPortadaUrl() {
     return portadaUrl;
   }
