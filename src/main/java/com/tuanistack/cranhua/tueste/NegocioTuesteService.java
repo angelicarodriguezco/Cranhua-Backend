@@ -69,9 +69,10 @@ public class NegocioTuesteService {
     return negocioRepository
         .findByCuentaIdAndEliminadoFalse(cuentaId)
         .map(NegocioTuesteResponse::de)
-        .orElseThrow(() ->
-            new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene un negocio registrado."));
+        .orElseThrow(
+            () ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene un negocio registrado."));
   }
 
   @Transactional
