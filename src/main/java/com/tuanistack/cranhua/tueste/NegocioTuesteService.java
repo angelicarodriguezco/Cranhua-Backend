@@ -64,6 +64,16 @@ public class NegocioTuesteService {
     return NegocioTuesteResponse.de(negocioExistente(id));
   }
 
+  @Transactional(readOnly = true)
+  public NegocioTuesteResponse actual(UUID cuentaId) {
+    return negocioRepository
+        .findByCuentaIdAndEliminadoFalse(cuentaId)
+        .map(NegocioTuesteResponse::de)
+        .orElseThrow(() ->
+            new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene un negocio registrado."));
+  }
+
   @Transactional
   public NegocioTuesteResponse actualizar(
       UUID id, ActualizarNegocioRequest request, UUID cuentaId) {

@@ -35,6 +35,12 @@ public class NegocioTuesteController {
     return ResponseEntity.created(URI.create("/api/tostadores/" + negocio.id())).body(negocio);
   }
 
+  @GetMapping("/actual")
+  @PreAuthorize("hasRole('TOSTADOR')")
+  public NegocioTuesteResponse actual(Authentication authentication) {
+    return negocioService.actual(idDe(authentication));
+  }
+
   @GetMapping("/{id}")
   @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public NegocioTuesteResponse obtener(@PathVariable UUID id) {

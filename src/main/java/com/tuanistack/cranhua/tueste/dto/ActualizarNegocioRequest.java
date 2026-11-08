@@ -20,6 +20,7 @@ public record ActualizarNegocioRequest(
         String telefono,
     @Email(regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message = "Ingresá un correo válido.")
         @Size(max = 160, message = "El correo no puede tener más de 160 caracteres.")
+        @Pattern(regexp = ".*\\S.*", message = "Ingresá el correo.")
         String correo,
     @Size(max = 300, message = "La descripción no puede tener más de 300 caracteres.")
         String descripcion,

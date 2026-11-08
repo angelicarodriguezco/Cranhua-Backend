@@ -211,10 +211,24 @@ class NegocioTuesteControllerTest {
   void editarConDatosInvalidosResponde400() throws Exception {
     String id = registrarId(mariana);
 
-    editar(mariana, id, Map.of("nombre", " ", "estilos", List.of()))
+    editar(mariana, id, Map.of("nombre", " ", "correo", "", "estilos", List.of()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errores.nombre").exists())
+        .andExpect(jsonPath("$.errores.correo").exists())
         .andExpect(jsonPath("$.errores.estilos").exists());
+  }
+
+  @Test
+  void tostadorConsultaSuNegocioActual() throws Exception {
+    String id = registrarId(mariana);
+
+    mockMvc
+        .perform(get("/api/tostadores/actual").cookie(sesion(mariana)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(id));
+    mockMvc
+        .perform(get("/api/tostadores/actual").cookie(sesion(pablo)))
+        .andExpect(status().isNotFound());
   }
 
   @Test
