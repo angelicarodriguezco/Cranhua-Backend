@@ -10,15 +10,18 @@ import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
 import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
 import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
 import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
+import com.tuanistack.cranhua.finca.UltimoDuenoException;
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ManejadorErrores {
@@ -67,6 +70,29 @@ public class ManejadorErrores {
   @ResponseStatus(HttpStatus.CONFLICT)
   public RespuestaError correoEnUso(CorreoEnUsoException e) {
     return new RespuestaError(e.getMessage(), null);
+  }
+
+  @ExceptionHandler(UltimoDuenoException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaError ultimoDueno(UltimoDuenoException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  // Siempre responde {mensaje}; si la excepción no trae uno se usa el del código
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<RespuestaError> conEstado(ResponseStatusException e) {
+    String mensaje = e.getReason();
+    if (mensaje == null || mensaje.isBlank()) {
+      mensaje =
+          switch (e.getStatusCode().value()) {
+            case 401 -> "Tenés que iniciar sesión.";
+            case 403 -> "No tenés permiso para hacer esto.";
+            case 404 -> "No encontramos lo que buscabas.";
+            case 409 -> "La operación entra en conflicto con datos existentes.";
+            default -> "No pudimos completar la operación.";
+          };
+    }
+    return ResponseEntity.status(e.getStatusCode()).body(new RespuestaError(mensaje, null));
   }
 
   @ExceptionHandler({

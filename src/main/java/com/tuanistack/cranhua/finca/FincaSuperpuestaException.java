@@ -1,6 +1,7 @@
 package com.tuanistack.cranhua.finca;
 
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
+import com.tuanistack.cranhua.finca.dto.FincaResponse;
 import java.util.List;
 
 public class FincaSuperpuestaException extends RuntimeException {
@@ -10,7 +11,12 @@ public class FincaSuperpuestaException extends RuntimeException {
   public FincaSuperpuestaException(ConflictoFinca conflicto) {
     super(
         "El terreno se sobrepone con la finca \"%s\" de %s."
-            .formatted(conflicto.nombre(), unirNombres(conflicto.duenos())));
+            .formatted(
+                conflicto.nombre(),
+                unirNombres(
+                    conflicto.duenos().stream()
+                        .map(FincaResponse.Dueno::nombreCompleto)
+                        .toList())));
     this.conflicto = conflicto;
   }
 
