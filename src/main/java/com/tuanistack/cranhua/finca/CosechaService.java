@@ -22,8 +22,10 @@ public class CosechaService {
         cosechaRepository
             .findById(cosechaId)
             .filter(c -> !c.getFinca().isEliminada())
-            .orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
     if (!cosecha.getFinca().esDueno(cuentaId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esta cosecha no es tuya.");
     }
