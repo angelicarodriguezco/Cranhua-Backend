@@ -3,8 +3,13 @@ package com.tuanistack.cranhua.cuenta;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.auth.CookieSesion;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import jakarta.servlet.http.Cookie;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -21,11 +27,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.server.ResponseStatusException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -38,6 +48,8 @@ class CuentaControllerTest {
   @Autowired private CuentaRepository cuentaRepository;
 
   @Autowired private PasswordEncoder passwordEncoder;
+
+  @MockitoBean private AlmacenamientoImagenes almacenamientoImagenes;
 
   @AfterEach
   void limpiar() {
@@ -79,6 +91,7 @@ class CuentaControllerTest {
     Cuenta cuenta = guardarCuenta("rodrigo@ejemplo.cr");
     cuenta.setTelefono("8888-1234");
     cuenta.setFotoUrl("https://ejemplo.cr/foto.jpg");
+    cuenta.setBannerUrl("https://ejemplo.cr/banner.jpg");
     cuenta.getRedes().add(new RedSocial(TipoRedSocial.INSTAGRAM, "@rodrigo"));
     cuentaRepository.saveAndFlush(cuenta);
     Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
@@ -92,6 +105,7 @@ class CuentaControllerTest {
         .andExpect(jsonPath("$.roles", contains("TOSTADOR")))
         .andExpect(jsonPath("$.telefono").value("8888-1234"))
         .andExpect(jsonPath("$.fotoUrl").value("https://ejemplo.cr/foto.jpg"))
+        .andExpect(jsonPath("$.bannerUrl").value("https://ejemplo.cr/banner.jpg"))
         .andExpect(jsonPath("$.redes", hasSize(1)))
         .andExpect(jsonPath("$.redes[0].tipo").value("INSTAGRAM"))
         .andExpect(jsonPath("$.redes[0].valor").value("@rodrigo"));
@@ -128,6 +142,7 @@ class CuentaControllerTest {
                       "nombreCompleto": "Rodrigo A. Alvarado",
                       "telefono": "7000-1111",
                       "fotoUrl": "https://cdn.ejemplo.cr/perfil.png",
+                      "bannerUrl": "https://cdn.ejemplo.cr/banner.png",
                       "redes": [
                         {"tipo": "INSTAGRAM", "valor": "@rodrigo.cafe"},
                         {"tipo": "WHATSAPP", "valor": "70001111"}
@@ -138,6 +153,7 @@ class CuentaControllerTest {
         .andExpect(jsonPath("$.nombreCompleto").value("Rodrigo A. Alvarado"))
         .andExpect(jsonPath("$.telefono").value("7000-1111"))
         .andExpect(jsonPath("$.fotoUrl").value("https://cdn.ejemplo.cr/perfil.png"))
+        .andExpect(jsonPath("$.bannerUrl").value("https://cdn.ejemplo.cr/banner.png"))
         .andExpect(jsonPath("$.redes", hasSize(2)))
         .andExpect(jsonPath("$.redes[0].tipo").value("INSTAGRAM"))
         .andExpect(jsonPath("$.redes[0].valor").value("@rodrigo.cafe"))
@@ -150,9 +166,139 @@ class CuentaControllerTest {
         .andExpect(jsonPath("$.nombreCompleto").value("Rodrigo A. Alvarado"))
         .andExpect(jsonPath("$.telefono").value("7000-1111"))
         .andExpect(jsonPath("$.fotoUrl").value("https://cdn.ejemplo.cr/perfil.png"))
+        .andExpect(jsonPath("$.bannerUrl").value("https://cdn.ejemplo.cr/banner.png"))
         .andExpect(jsonPath("$.redes", hasSize(2)))
         .andExpect(jsonPath("$.correo").value("rodrigo@ejemplo.cr"))
         .andExpect(jsonPath("$.roles", contains("TOSTADOR")));
+  }
+
+  @Test
+  void postFotoGuardaUrlDeCloudinaryYReemplazoActualizaUrl() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr");
+    Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "foto.jpg", "image/jpeg", new byte[] {1, 2, 3});
+
+    when(almacenamientoImagenes.subirFoto(any()))
+        .thenReturn("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/a.jpg")
+        .thenReturn("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/b.jpg");
+
+    mockMvc
+        .perform(multipart("/api/cuenta/foto").file(archivo).cookie(sesion))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.fotoUrl")
+                .value("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/a.jpg"));
+
+    mockMvc
+        .perform(multipart("/api/cuenta/foto").file(archivo).cookie(sesion))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.fotoUrl")
+                .value("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/b.jpg"));
+
+    Cuenta actualizada =
+        cuentaRepository.findByCorreoAndEliminadaFalse("rodrigo@ejemplo.cr").orElseThrow();
+    assertThat(actualizada.getFotoUrl())
+        .isEqualTo("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/b.jpg");
+  }
+
+  @Test
+  void postBannerGuardaUrlDeCloudinaryYReemplazoActualizaUrl() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr");
+    Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "banner.png", "image/png", new byte[] {4, 5, 6});
+
+    when(almacenamientoImagenes.subirBanner(any()))
+        .thenReturn("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/banners/a.png")
+        .thenReturn("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/banners/b.png");
+
+    mockMvc
+        .perform(multipart("/api/cuenta/banner").file(archivo).cookie(sesion))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.bannerUrl")
+                .value("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/banners/a.png"));
+
+    mockMvc
+        .perform(multipart("/api/cuenta/banner").file(archivo).cookie(sesion))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.bannerUrl")
+                .value("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/banners/b.png"));
+
+    Cuenta actualizada =
+        cuentaRepository.findByCorreoAndEliminadaFalse("rodrigo@ejemplo.cr").orElseThrow();
+    assertThat(actualizada.getBannerUrl())
+        .isEqualTo("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/banners/b.png");
+  }
+
+  @Test
+  void postFotoConMimeInvalidoDa400() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr");
+    Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "doc.pdf", "application/pdf", new byte[] {1});
+
+    when(almacenamientoImagenes.subirFoto(any()))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Solo se aceptan imágenes JPG, PNG o WebP."));
+
+    mockMvc
+        .perform(multipart("/api/cuenta/foto").file(archivo).cookie(sesion))
+        .andExpect(status().isBadRequest());
+
+    verify(almacenamientoImagenes).subirFoto(any());
+    verify(almacenamientoImagenes, never()).subirBanner(any());
+
+    Cuenta sinCambios =
+        cuentaRepository.findByCorreoAndEliminadaFalse("rodrigo@ejemplo.cr").orElseThrow();
+    assertThat(sinCambios.getFotoUrl()).isNull();
+  }
+
+  @Test
+  void postBannerConMimeInvalidoDa400() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr");
+    Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "doc.gif", "image/gif", new byte[] {1});
+
+    when(almacenamientoImagenes.subirBanner(any()))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "Solo se aceptan imágenes JPG, PNG o WebP."));
+
+    mockMvc
+        .perform(multipart("/api/cuenta/banner").file(archivo).cookie(sesion))
+        .andExpect(status().isBadRequest());
+
+    verify(almacenamientoImagenes).subirBanner(any());
+    verify(almacenamientoImagenes, never()).subirFoto(any());
+
+    Cuenta sinCambios =
+        cuentaRepository.findByCorreoAndEliminadaFalse("rodrigo@ejemplo.cr").orElseThrow();
+    assertThat(sinCambios.getBannerUrl()).isNull();
+  }
+
+  @Test
+  void postFotoConArchivoDemasiadoGrandeDa400() throws Exception {
+    guardarCuenta("rodrigo@ejemplo.cr");
+    Cookie sesion = iniciarSesion("rodrigo@ejemplo.cr");
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "grande.jpg", "image/jpeg", new byte[] {1, 2, 3});
+
+    when(almacenamientoImagenes.subirFoto(any()))
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "La imagen no puede superar los 5 MB."));
+
+    mockMvc
+        .perform(multipart("/api/cuenta/foto").file(archivo).cookie(sesion))
+        .andExpect(status().isBadRequest());
+
+    verify(almacenamientoImagenes).subirFoto(any());
   }
 
   @Test

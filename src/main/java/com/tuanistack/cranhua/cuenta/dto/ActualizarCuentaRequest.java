@@ -12,4 +12,6 @@ public record ActualizarCuentaRequest(
     @Size(max = 30, message = "El teléfono no puede tener más de 30 caracteres.") String telefono,
     @Size(max = 500, message = "La URL de la foto no puede tener más de 500 caracteres.")
         String fotoUrl,
+    @Size(max = 500, message = "La URL del banner no puede tener más de 500 caracteres.")
+        String bannerUrl,
     @Valid List<RedSocialRequest> redes) {}

@@ -12,6 +12,7 @@ public record CuentaResponse(
     List<Rol> roles,
     String telefono,
     String fotoUrl,
+    String bannerUrl,
     List<RedSocialResponse> redes) {
 
   public static CuentaResponse de(Cuenta cuenta) {
@@ -22,6 +23,7 @@ public record CuentaResponse(
         cuenta.getRoles().stream().sorted().toList(),
         cuenta.getTelefono(),
         cuenta.getFotoUrl(),
+        cuenta.getBannerUrl(),
         cuenta.getRedes().stream().map(RedSocialResponse::de).toList());
   }
 }

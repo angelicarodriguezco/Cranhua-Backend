@@ -12,11 +12,14 @@ import com.tuanistack.cranhua.cuenta.dto.CuentaResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,9 +41,16 @@ public class AuthController {
     this.cookieSesion = cookieSesion;
   }
 
-  @PostMapping("/registro")
+  @PostMapping(value = "/registro", consumes = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<CuentaResponse> registrar(@Valid @RequestBody RegistroRequest request) {
     return conSesion(HttpStatus.CREATED, registroService.registrar(request));
+  }
+
+  @PostMapping(value = "/registro", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<CuentaResponse> registrarConFoto(
+      @Valid @RequestPart("datos") RegistroRequest request,
+      @RequestPart(value = "foto", required = false) MultipartFile foto) {
+    return conSesion(HttpStatus.CREATED, registroService.registrar(request, foto));
   }
 
   @PostMapping("/registro/google")

@@ -33,8 +33,11 @@ copy .env.example .env    # PowerShell / CMD
 | `MAIL_PORT`         | Puerto SMTP (STARTTLS)                                                                                                                               | `587`            |
 | `MAIL_USERNAME`     | Cuenta que manda los correos; también es el remitente. Si queda vacía el backend levanta, pero los códigos no llegan.                                | (vacío)          |
 | `MAIL_PASSWORD`     | Contraseña SMTP. Con Gmail es una contraseña de aplicación, no la de la cuenta.                                                                      | (vacío)          |
+| `CLOUDINARY_CLOUD_NAME` | Cloud name de la cuenta de Cloudinary (Dashboard → Account Details / API Keys). Si queda vacío el backend levanta, pero la subida de foto/banner falla. | (vacío)      |
+| `CLOUDINARY_API_KEY`    | API Key de Cloudinary para subidas firmadas desde el backend.                                                                                        | (vacío)          |
+| `CLOUDINARY_API_SECRET` | API Secret de Cloudinary. No pegarlo en el código ni en PRs; solo en `.env` local.                                                                   | (vacío)          |
 
-El `.env` está en `.gitignore`. No subirlo ni pegar llaves reales en issues o PRs. La llave de Gemini se saca en https://aistudio.google.com/apikey.
+El `.env` está en `.gitignore`. No subirlo ni pegar llaves reales en issues o PRs. La llave de Gemini se saca en https://aistudio.google.com/apikey. Las de Cloudinary, en https://cloudinary.com (Dashboard → Account Details / API Keys).
 
 ## Levantar todo con Docker
 
