@@ -113,12 +113,11 @@ class CloudinaryAlmacenamientoImagenesTest {
 
     assertThatThrownBy(() -> almacenamiento.subirFoto(archivo))
         .isInstanceOf(ResponseStatusException.class)
-        .satisfies(
-            ex -> {
-              ResponseStatusException status = (ResponseStatusException) ex;
-              assertThat(status.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-              assertThat(status.getReason()).contains("5 MB");
-            });
+        .satisfies(ex -> {
+          ResponseStatusException status = (ResponseStatusException) ex;
+          assertThat(status.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+          assertThat(status.getReason()).contains("5 MB");
+        });
 
     verify(uploader, never()).upload(any(byte[].class), anyMap());
   }

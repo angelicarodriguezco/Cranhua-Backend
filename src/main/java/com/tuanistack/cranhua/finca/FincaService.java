@@ -47,15 +47,14 @@ public class FincaService {
     Polygon perimetro = validarPerimetro(request);
     fincaRepository
         .buscarSuperpuesta(perimetro)
-        .ifPresent(
-            otra -> {
-              throw new FincaSuperpuestaException(
-                  new ConflictoFinca(
-                      otra.getId(),
-                      otra.getNombre(),
-                      FincaResponse.duenos(otra),
-                      GeometriaUtil.puntos(otra.getPerimetro())));
-            });
+        .ifPresent(otra -> {
+          throw new FincaSuperpuestaException(
+              new ConflictoFinca(
+                  otra.getId(),
+                  otra.getNombre(),
+                  FincaResponse.duenos(otra),
+                  GeometriaUtil.puntos(otra.getPerimetro())));
+        });
 
     Finca finca =
         new Finca(
@@ -90,14 +89,13 @@ public class FincaService {
         .forEach(fila -> resumenes.put((UUID) fila[0], fila));
 
     return fincas.stream()
-        .map(
-            finca -> {
-              Object[] resumen = resumenes.get(finca.getId());
-              return FincaResponse.de(finca, areas.get(finca.getId()))
-                  .conResumen(
-                      resumen == null ? 0 : (Long) resumen[1],
-                      resumen == null ? BigDecimal.ZERO : (BigDecimal) resumen[2]);
-            })
+        .map(finca -> {
+          Object[] resumen = resumenes.get(finca.getId());
+          return FincaResponse.de(finca, areas.get(finca.getId()))
+              .conResumen(
+                  resumen == null ? 0 : (Long) resumen[1],
+                  resumen == null ? BigDecimal.ZERO : (BigDecimal) resumen[2]);
+        })
         .toList();
   }
 
@@ -132,11 +130,10 @@ public class FincaService {
         cuentaRepository
             .findByCorreoAndEliminadaFalse(Cuenta.normalizarCorreo(correo))
             .filter(cuenta -> cuenta.getRoles().contains(Rol.CAFETALERO))
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No encontramos una cuenta de cafetalero con ese correo."));
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No encontramos una cuenta de cafetalero con ese correo."));
     if (finca.esDueno(nuevo.getId())) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "Esa cuenta ya es dueña de esta finca.");

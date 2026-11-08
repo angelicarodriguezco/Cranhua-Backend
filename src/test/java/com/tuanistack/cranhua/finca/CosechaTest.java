@@ -28,12 +28,11 @@ class CosechaTest {
 
   @Test
   void porcentajesQueNoSuman100Fallan() {
-    assertThatThrownBy(
-            () ->
-                nuevaCosecha(
-                    List.of(
-                        new ProcesoReparto(Proceso.HONEY, 50),
-                        new ProcesoReparto(Proceso.NATURAL, 40))))
+    assertThatThrownBy(() ->
+            nuevaCosecha(
+                List.of(
+                    new ProcesoReparto(Proceso.HONEY, 50),
+                    new ProcesoReparto(Proceso.NATURAL, 40))))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

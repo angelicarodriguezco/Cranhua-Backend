@@ -51,14 +51,12 @@ public class SecurityConfig {
         .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth -> auth.requestMatchers(RUTAS_PUBLICAS).permitAll().anyRequest().authenticated())
-        .oauth2ResourceServer(
-            jwt ->
-                jwt.bearerTokenResolver(tokenDesdeCookie())
-                    .authenticationEntryPoint(responder401)
-                    .jwt(config -> config.jwtAuthenticationConverter(rolesDelToken())))
-        .exceptionHandling(
-            errores ->
-                errores.authenticationEntryPoint(responder401).accessDeniedHandler(responder403));
+        .oauth2ResourceServer(jwt ->
+            jwt.bearerTokenResolver(tokenDesdeCookie())
+                .authenticationEntryPoint(responder401)
+                .jwt(config -> config.jwtAuthenticationConverter(rolesDelToken())))
+        .exceptionHandling(errores ->
+            errores.authenticationEntryPoint(responder401).accessDeniedHandler(responder403));
     return http.build();
   }
 

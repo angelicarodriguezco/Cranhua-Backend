@@ -75,10 +75,8 @@ class CuentaRepositoryTest {
   void noPermiteDosCuentasConElMismoCorreo() {
     cuentaRepository.saveAndFlush(nuevaCuenta("lucia@ejemplo.cr", Set.of(Rol.TOSTADOR)));
 
-    assertThatThrownBy(
-            () ->
-                cuentaRepository.saveAndFlush(
-                    nuevaCuenta("LUCIA@Ejemplo.cr", Set.of(Rol.CAFETERIA))))
+    assertThatThrownBy(() ->
+            cuentaRepository.saveAndFlush(nuevaCuenta("LUCIA@Ejemplo.cr", Set.of(Rol.CAFETERIA))))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
