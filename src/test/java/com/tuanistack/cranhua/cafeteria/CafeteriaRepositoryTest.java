@@ -188,15 +188,16 @@ class CafeteriaRepositoryTest {
         .isInstanceOf(IllegalArgumentException.class);
 
     entityManager.flush();
-    assertThatThrownBy(() ->
-            entityManager
-                .getEntityManager()
-                .createNativeQuery(
-                    "insert into item_menu (id, cafeteria_id, nombre, categoria,"
-                        + " codigo_trazabilidad, precio, creado_en) values (gen_random_uuid(),"
-                        + " ?1, 'Empanada', 'OTRA_COMIDA', 'CRH-2026-0101', 1200, now())")
-                .setParameter(1, cafeteria.getId())
-                .executeUpdate())
+    assertThatThrownBy(
+            () ->
+                entityManager
+                    .getEntityManager()
+                    .createNativeQuery(
+                        "insert into item_menu (id, cafeteria_id, nombre, categoria,"
+                            + " codigo_trazabilidad, precio, creado_en) values (gen_random_uuid(),"
+                            + " ?1, 'Empanada', 'OTRA_COMIDA', 'CRH-2026-0101', 1200, now())")
+                    .setParameter(1, cafeteria.getId())
+                    .executeUpdate())
         .hasMessageContaining("ck_item_menu_trazabilidad");
   }
 
