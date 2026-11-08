@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -192,6 +193,23 @@ class FincaControllerTest {
   }
 
   @Test
+  void cuentaEliminadaDa401ConMensaje() throws Exception {
+    Cookie cookie = sesion(andres);
+    andres.eliminar();
+    cuentaRepository.saveAndFlush(andres);
+
+    mockMvc
+        .perform(
+            post("/api/fincas")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(finca("Sin cuenta", CUADRADO))))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.mensaje").value("Tenés que iniciar sesión."));
+    assertThat(fincaRepository.count()).isZero();
+  }
+
+  @Test
   void tostadorDa403() throws Exception {
     Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
 
@@ -350,5 +368,184 @@ class FincaControllerTest {
 
     registrar(andres, finca("Finca La Catalina", SOBREPUESTO)).andExpect(status().isCreated());
     assertThat(fincaRepository.count()).isEqualTo(2);
+  }
+
+  private Finca fincaDe(Cuenta... duenos) {
+    Finca finca =
+        new Finca(
+            "Finca La Catalina",
+            GeometriaUtil.poligono(coordenadas(CUADRADO)),
+            GeometriaUtil.punto(new Coordenada(9.655, -84.025)),
+            "Tarrazú",
+            "San José");
+    for (Cuenta dueno : duenos) {
+      finca.agregarDueno(dueno);
+    }
+    return fincaRepository.saveAndFlush(finca);
+  }
+
+  private ResultActions agregarDueno(Cuenta cuenta, UUID fincaId, String correo) throws Exception {
+    return mockMvc.perform(
+        post("/api/fincas/{id}/duenos", fincaId)
+            .cookie(sesion(cuenta))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(Map.of("correo", correo))));
+  }
+
+  private ResultActions quitarDueno(Cuenta cuenta, UUID fincaId, UUID duenoId) throws Exception {
+    return mockMvc.perform(
+        delete("/api/fincas/{id}/duenos/{cuentaId}", fincaId, duenoId).cookie(sesion(cuenta)));
+  }
+
+  @Test
+  void agregarUnDuenoPorCorreo() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    agregarDueno(andres, finca.getId(), "lucia@ejemplo.cr")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(finca.getId().toString()))
+        .andExpect(jsonPath("$.duenos[*].nombreCompleto", contains("Andrés Solano", "Lucía Mora")))
+        .andExpect(
+            jsonPath(
+                "$.duenos[*].id", contains(andres.getId().toString(), lucia.getId().toString())));
+
+    for (Cuenta dueno : List.of(andres, lucia)) {
+      assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(dueno.getId()))
+          .extracting(Finca::getId)
+          .containsExactly(finca.getId());
+    }
+  }
+
+  @Test
+  void elCorreoConMayusculasYEspaciosEncuentraLaCuenta() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    agregarDueno(andres, finca.getId(), "  LUCIA@Ejemplo.CR ")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.duenos", hasSize(2)));
+  }
+
+  @Test
+  void correoSinCuentaDeCafetaleroActivaDa404() throws Exception {
+    Finca finca = fincaDe(andres);
+    cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+    Cuenta eliminada = cuenta("Ana Quirós", "ana@ejemplo.cr", Rol.CAFETALERO);
+    eliminada.eliminar();
+    cuentaRepository.saveAndFlush(eliminada);
+
+    for (String correo : List.of("nadie@ejemplo.cr", "mario@ejemplo.cr", "ana@ejemplo.cr")) {
+      agregarDueno(andres, finca.getId(), correo)
+          .andExpect(status().isNotFound())
+          .andExpect(
+              jsonPath("$.mensaje")
+                  .value("No encontramos una cuenta de cafetalero con ese correo."));
+    }
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(andres.getId())).hasSize(1);
+  }
+
+  @Test
+  void agregarAQuienYaEsDuenoDa409() throws Exception {
+    Finca finca = fincaDe(andres, lucia);
+
+    agregarDueno(andres, finca.getId(), "lucia@ejemplo.cr")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.mensaje").value("Esa cuenta ya es dueña de esta finca."));
+  }
+
+  @Test
+  void soloUnDuenoPuedeAgregarDuenos() throws Exception {
+    Finca finca = fincaDe(andres);
+    Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+
+    agregarDueno(lucia, finca.getId(), "lucia@ejemplo.cr")
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede administrar sus dueños."));
+    agregarDueno(tostador, finca.getId(), "lucia@ejemplo.cr").andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/fincas/{id}/duenos", finca.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"correo\": \"lucia@ejemplo.cr\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void fincaInexistenteOEliminadaDa404() throws Exception {
+    Finca eliminada = fincaDe(andres);
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+
+    for (UUID id : List.of(UUID.randomUUID(), eliminada.getId())) {
+      agregarDueno(andres, id, "lucia@ejemplo.cr")
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+      quitarDueno(andres, id, andres.getId()).andExpect(status().isNotFound());
+    }
+  }
+
+  @Test
+  void correoMalFormadoDa400() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    agregarDueno(andres, finca.getId(), "lucia@ejemplo")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.correo").value("Ingresá un correo válido."));
+    // Vacío falla @NotBlank y @Email, y el orden de los dos mensajes no es fijo
+    agregarDueno(andres, finca.getId(), " ")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.correo").exists());
+  }
+
+  @Test
+  void quitarAUnDueno() throws Exception {
+    Finca finca = fincaDe(andres, lucia);
+
+    quitarDueno(andres, finca.getId(), lucia.getId())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.duenos[*].nombreCompleto", contains("Andrés Solano")));
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(lucia.getId())).isEmpty();
+  }
+
+  @Test
+  void unDuenoPuedeQuitarseASiMismo() throws Exception {
+    Finca finca = fincaDe(andres, lucia);
+
+    quitarDueno(lucia, finca.getId(), lucia.getId())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.duenos[*].nombreCompleto", contains("Andrés Solano")));
+  }
+
+  @Test
+  void quitarAlUltimoDuenoDa409() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    quitarDueno(andres, finca.getId(), andres.getId())
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.mensaje").value("No se puede quitar al último dueño de la finca."));
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(andres.getId())).hasSize(1);
+  }
+
+  @Test
+  void quitarAQuienNoEsDuenoDa404() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    quitarDueno(andres, finca.getId(), lucia.getId())
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.mensaje").value("Esa cuenta no es dueña de esta finca."));
+  }
+
+  @Test
+  void soloUnDuenoPuedeQuitarDuenos() throws Exception {
+    Finca finca = fincaDe(andres, lucia);
+    Cuenta carlos = cuenta("Carlos Brenes", "carlos@ejemplo.cr", Rol.CAFETALERO);
+
+    quitarDueno(carlos, finca.getId(), lucia.getId())
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede administrar sus dueños."));
+    mockMvc
+        .perform(delete("/api/fincas/{id}/duenos/{cuentaId}", finca.getId(), lucia.getId()))
+        .andExpect(status().isUnauthorized());
   }
 }

@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.finca;
 
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
+import com.tuanistack.cranhua.cuenta.Rol;
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
 import com.tuanistack.cranhua.finca.dto.FincaResponse;
@@ -58,6 +59,49 @@ public class FincaService {
     finca = fincaRepository.saveAndFlush(finca);
 
     return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()));
+  }
+
+  @Transactional
+  public FincaResponse agregarDueno(UUID fincaId, String correo, UUID cuentaId) {
+    Finca finca = fincaAdministrable(fincaId, cuentaId);
+    Cuenta nuevo =
+        cuentaRepository
+            .findByCorreoAndEliminadaFalse(Cuenta.normalizarCorreo(correo))
+            .filter(cuenta -> cuenta.getRoles().contains(Rol.CAFETALERO))
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "No encontramos una cuenta de cafetalero con ese correo."));
+    if (finca.esDueno(nuevo.getId())) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "Esa cuenta ya es dueña de esta finca.");
+    }
+    finca.agregarDueno(nuevo);
+    return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()));
+  }
+
+  @Transactional
+  public FincaResponse quitarDueno(UUID fincaId, UUID duenoId, UUID cuentaId) {
+    Finca finca = fincaAdministrable(fincaId, cuentaId);
+    if (!finca.esDueno(duenoId)) {
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "Esa cuenta no es dueña de esta finca.");
+    }
+    finca.quitarDueno(duenoId);
+    return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()));
+  }
+
+  private Finca fincaAdministrable(UUID fincaId, UUID cuentaId) {
+    Finca finca =
+        fincaRepository
+            .findByIdAndEliminadaFalse(fincaId)
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa finca."));
+    if (!finca.esDueno(cuentaId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede administrar sus dueños.");
+    }
+    return finca;
   }
 
   private static Polygon validarPerimetro(RegistrarFincaRequest request) {
