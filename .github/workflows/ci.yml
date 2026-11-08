@@ -46,9 +46,11 @@ jobs:
           java-version: "21"
           distribution: temurin
 
+      # Versión fija: sin ella la acción toma la última y una release nueva rompe código ya formateado
       - name: Check Google Java Format
         uses: axel-op/googlejavaformat-action@v4
         with:
+          release-name: "v2.0.0"
           args: "--set-exit-if-changed"
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
