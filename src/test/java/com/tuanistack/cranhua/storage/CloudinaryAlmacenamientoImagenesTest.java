@@ -129,8 +129,7 @@ class CloudinaryAlmacenamientoImagenesTest {
         .thenReturn(Map.of("secure_url", "https://res.cloudinary.com/demo/ok.jpg"));
 
     for (String tipo : new String[] {"image/jpeg", "IMAGE/PNG", "Image/WebP"}) {
-      MockMultipartFile archivo =
-          new MockMultipartFile("archivo", "img", tipo, new byte[] {1, 2});
+      MockMultipartFile archivo = new MockMultipartFile("archivo", "img", tipo, new byte[] {1, 2});
       assertThat(almacenamiento.subirFoto(archivo)).startsWith("https://");
     }
   }

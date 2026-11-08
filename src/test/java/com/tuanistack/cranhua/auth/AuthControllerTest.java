@@ -42,7 +42,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -56,6 +55,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.server.ResponseStatusException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -218,7 +218,8 @@ class AuthControllerTest {
                         "https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/reg.webp"))
             .andReturn();
 
-    Cuenta guardada = cuentaRepository.findByCorreoAndEliminadaFalse("foto@ejemplo.cr").orElseThrow();
+    Cuenta guardada =
+        cuentaRepository.findByCorreoAndEliminadaFalse("foto@ejemplo.cr").orElseThrow();
     assertThat(guardada.getFotoUrl())
         .isEqualTo("https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/fotos/reg.webp");
     assertThat(resultado.getResponse().getCookie(CookieSesion.NOMBRE)).isNotNull();
