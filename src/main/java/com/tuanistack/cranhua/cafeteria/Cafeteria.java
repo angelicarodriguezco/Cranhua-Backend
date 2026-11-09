@@ -226,6 +226,8 @@ public class Cafeteria {
     return estilos;
   }
 
+  public void setEstilos(Set<NivelTueste> estilos) {this.estilos.clear(); this.estilos.addAll(estilos); }
+
   public VolumenMensual getVolumenMensual() {
     return volumenMensual;
   }
