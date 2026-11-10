@@ -10,6 +10,66 @@ Este repositorio es el backend: Spring Boot 3.5 con Java 21, PostgreSQL 17 + Pos
 - Docker Desktop abierto (incluye Docker Compose)
 - JDK 21, solo si se va a correr el backend fuera de Docker. No hace falta instalar Maven, el repo trae `mvnw`.
 
+## Dependencias externas
+
+Servicios y secretos que el backend usa. Ningún valor real va en el README ni en git: solo en el `.env` local.
+
+### Google Gemini (chat IA)
+
+- **Para qué:** endpoint `POST /api/ai/chat` (Spring AI).
+- **Variable:** `GEMINI_API_KEY` (obligatoria para que Docker Compose arranque; sin una llave válida el chat falla).
+- **Cómo obtenerla:**
+  1. Entrar a [Google AI Studio](https://aistudio.google.com/apikey) con una cuenta de Google.
+  2. Crear una API key.
+  3. Pegarla en `.env` como `GEMINI_API_KEY`.
+
+### Google Sign-In (registro / login)
+
+- **Para qué:** `POST /api/auth/registro/google` y `POST /api/auth/iniciarSesion/google`.
+- **Variable:** `GOOGLE_CLIENT_ID` (opcional; sin ella el backend levanta, pero esas rutas responden 401).
+- **Cómo obtenerlo:**
+  1. Ir a [Google Cloud Console](https://console.cloud.google.com/) y crear o elegir un proyecto.
+  2. En _APIs y servicios_ → _Credenciales_, crear un ID de cliente OAuth tipo **Aplicación web**.
+  3. En orígenes autorizados de JavaScript agregar el origen del frontend (en local, `http://localhost:4200`).
+  4. Copiar el **Client ID** a `.env` como `GOOGLE_CLIENT_ID`.
+  5. El mismo Client ID debe usarse en el frontend (Google Identity Services).
+
+### Cloudinary (fotos y banners)
+
+- **Para qué:** subida de foto/banner de cuenta (`POST /api/cuenta/foto`, `POST /api/cuenta/banner`).
+- **Variables:** `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (opcionales; sin ellas el backend levanta, pero la subida falla).
+- **Cómo obtenerlas:**
+  1. Crear cuenta en [Cloudinary](https://cloudinary.com).
+  2. En el Dashboard → _Account Details_ / _API Keys_, copiar Cloud name, API Key y API Secret.
+  3. Pegarlos en `.env`. No compartir el secret en issues ni PRs.
+
+### Correo SMTP (recuperación de contraseña)
+
+- **Para qué:** envío del código en `POST /api/auth/recuperar`.
+- **Variables:** `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` (opcionales; sin ellas el backend levanta, pero los códigos no llegan).
+- **Cómo obtenerlas (Gmail):**
+  1. Activar la verificación en 2 pasos en la cuenta de Google.
+  2. Crear una [contraseña de aplicación](https://myaccount.google.com/apppasswords) (no usar la contraseña normal de la cuenta).
+  3. En `.env`: host SMTP de Gmail, puerto STARTTLS, el correo en `MAIL_USERNAME` y la contraseña de aplicación en `MAIL_PASSWORD`.
+
+### Secreto JWT (sesión)
+
+- **Para qué:** firmar la cookie de sesión `cranhua_sesion`.
+- **Variable:** `JWT_SECRET` (obligatoria; mínimo 32 caracteres).
+- **Cómo obtenerla:** generarla en local, no pedirla a un proveedor:
+
+```bash
+openssl rand -base64 48
+```
+
+Pegar el resultado en `.env` como `JWT_SECRET`.
+
+### Base de datos (PostgreSQL + PostGIS)
+
+- **Para qué:** persistencia; la imagen la levanta Docker Compose (`postgis/postgis`).
+- **Variables:** `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` (obligatorias). `DB_PORT` y `BACKEND_PORT` son opcionales si los puertos por defecto están libres.
+- **Cómo obtenerlas:** no hay proveedor externo; definir usuario, nombre de base y contraseña propios en `.env`. La contraseña solo vive ahí.
+
 ## Variables de entorno
 
 Copiar el archivo de ejemplo en la raíz del repo:
@@ -19,25 +79,27 @@ cp .env.example .env      # Git Bash / macOS / Linux
 copy .env.example .env    # PowerShell / CMD
 ```
 
-| Variable            | Para qué sirve                                                                                                                                       | Valor de ejemplo |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `GEMINI_API_KEY`    | Llave de Google AI Studio que usa Spring AI. Docker Compose no arranca si está vacía. Con `pendiente` el backend levanta, pero `/api/ai/chat` falla. | `pendiente`      |
-| `GOOGLE_CLIENT_ID`  | Client ID web de Google Cloud para registrarse y entrar con Google. Si queda vacío el backend levanta, pero las rutas de Google responden 401.         | (vacío)          |
-| `JWT_SECRET`        | Clave con la que se firma el token de sesión. Mínimo 32 caracteres; sin ella el backend no arranca. Generarla con `openssl rand -base64 48`.          | (generada)       |
-| `POSTGRES_DB`       | Nombre de la base de datos                                                                                                                           | `cranhua`        |
-| `POSTGRES_USER`     | Usuario de la base de datos                                                                                                                          | `cranhua`        |
-| `POSTGRES_PASSWORD` | Contraseña de la base de datos                                                                                                                       | `Cranhua123`     |
-| `DB_PORT`           | Puerto de Postgres en la máquina. Cambiarlo (por ejemplo a `5433`) si ya hay otro Postgres usando el 5432.                                           | `5432`           |
-| `BACKEND_PORT`      | Puerto del backend en la máquina cuando corre en Docker                                                                                              | `8080`           |
-| `MAIL_HOST`         | Servidor SMTP para mandar los códigos de recuperación de contraseña                                                                                  | `smtp.gmail.com` |
-| `MAIL_PORT`         | Puerto SMTP (STARTTLS)                                                                                                                               | `587`            |
-| `MAIL_USERNAME`     | Cuenta que manda los correos; también es el remitente. Si queda vacía el backend levanta, pero los códigos no llegan.                                | (vacío)          |
-| `MAIL_PASSWORD`     | Contraseña SMTP. Con Gmail es una contraseña de aplicación, no la de la cuenta.                                                                      | (vacío)          |
-| `CLOUDINARY_CLOUD_NAME` | Cloud name de la cuenta de Cloudinary (Dashboard → Account Details / API Keys). Si queda vacío el backend levanta, pero la subida de foto/banner falla. | (vacío)      |
-| `CLOUDINARY_API_KEY`    | API Key de Cloudinary para subidas firmadas desde el backend.                                                                                        | (vacío)          |
-| `CLOUDINARY_API_SECRET` | API Secret de Cloudinary. No pegarlo en el código ni en PRs; solo en `.env` local.                                                                   | (vacío)          |
+Completar el `.env` con lo de la sección anterior. Resumen:
 
-El `.env` está en `.gitignore`. No subirlo ni pegar llaves reales en issues o PRs. La llave de Gemini se saca en https://aistudio.google.com/apikey. Las de Cloudinary, en https://cloudinary.com (Dashboard → Account Details / API Keys).
+| Variable                | Obligatoria | Dependencia |
+| ----------------------- | ----------- | ----------- |
+| `GEMINI_API_KEY`        | Sí          | Google Gemini |
+| `GOOGLE_CLIENT_ID`      | No          | Google Sign-In |
+| `JWT_SECRET`            | Sí          | Secreto JWT (generado en local) |
+| `POSTGRES_DB`           | Sí          | PostgreSQL / PostGIS |
+| `POSTGRES_USER`         | Sí          | PostgreSQL / PostGIS |
+| `POSTGRES_PASSWORD`     | Sí          | PostgreSQL / PostGIS |
+| `DB_PORT`               | No          | PostgreSQL / PostGIS (puerto en la máquina) |
+| `BACKEND_PORT`          | No          | Puerto del backend en Docker |
+| `MAIL_HOST`             | No          | Correo SMTP |
+| `MAIL_PORT`             | No          | Correo SMTP |
+| `MAIL_USERNAME`         | No          | Correo SMTP |
+| `MAIL_PASSWORD`         | No          | Correo SMTP |
+| `CLOUDINARY_CLOUD_NAME` | No          | Cloudinary |
+| `CLOUDINARY_API_KEY`    | No          | Cloudinary |
+| `CLOUDINARY_API_SECRET` | No          | Cloudinary |
+
+El `.env` está en `.gitignore`. No subirlo ni pegar llaves reales en issues o PRs.
 
 ## Levantar todo con Docker
 
