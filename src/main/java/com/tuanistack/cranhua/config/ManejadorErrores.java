@@ -1,0 +1,113 @@
+package com.tuanistack.cranhua.config;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.tuanistack.cranhua.auth.CodigoInvalidoException;
+import com.tuanistack.cranhua.auth.CorreoEnUsoException;
+import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
+import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
+import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
+import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
+import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
+import com.tuanistack.cranhua.finca.UltimoDuenoException;
+import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestControllerAdvice
+public class ManejadorErrores {
+
+  private static final String DATOS_INVALIDOS = "Revisá los datos ingresados.";
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record RespuestaError(String mensaje, Map<String, String> errores) {}
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError datosInvalidos(MethodArgumentNotValidException e) {
+    Map<String, String> errores = new LinkedHashMap<>();
+    e.getBindingResult()
+        .getFieldErrors()
+        .forEach(error -> errores.putIfAbsent(error.getField(), error.getDefaultMessage()));
+    return new RespuestaError(DATOS_INVALIDOS, errores);
+  }
+
+  // Un tipo de dato equivocado en el JSON (por ejemplo roles como texto) también va por campo
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError jsonInvalido(HttpMessageNotReadableException e) {
+    if (e.getCause() instanceof MismatchedInputException error && !error.getPath().isEmpty()) {
+      JsonMappingException.Reference campo = error.getPath().get(0);
+      return new RespuestaError(DATOS_INVALIDOS, Map.of(campo.getFieldName(), "Valor inválido."));
+    }
+    return new RespuestaError(DATOS_INVALIDOS, null);
+  }
+
+  @ExceptionHandler(PerimetroInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError perimetroInvalido(PerimetroInvalidoException e) {
+    return new RespuestaError(DATOS_INVALIDOS, Map.of("perimetro", e.getMessage()));
+  }
+
+  public record RespuestaSuperposicion(String mensaje, ConflictoFinca conflicto) {}
+
+  @ExceptionHandler(FincaSuperpuestaException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaSuperposicion fincaSuperpuesta(FincaSuperpuestaException e) {
+    return new RespuestaSuperposicion(e.getMessage(), e.getConflicto());
+  }
+
+  @ExceptionHandler(CorreoEnUsoException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaError correoEnUso(CorreoEnUsoException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  @ExceptionHandler(UltimoDuenoException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaError ultimoDueno(UltimoDuenoException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  // Siempre responde {mensaje}; si la excepción no trae uno se usa el del código
+  @ExceptionHandler(ResponseStatusException.class)
+  public ResponseEntity<RespuestaError> conEstado(ResponseStatusException e) {
+    String mensaje = e.getReason();
+    if (mensaje == null || mensaje.isBlank()) {
+      mensaje =
+          switch (e.getStatusCode().value()) {
+            case 401 -> "Tenés que iniciar sesión.";
+            case 403 -> "No tenés permiso para hacer esto.";
+            case 404 -> "No encontramos lo que buscabas.";
+            case 409 -> "La operación entra en conflicto con datos existentes.";
+            default -> "No pudimos completar la operación.";
+          };
+    }
+    return ResponseEntity.status(e.getStatusCode()).body(new RespuestaError(mensaje, null));
+  }
+
+  @ExceptionHandler({
+    CredencialesInvalidasException.class,
+    GoogleNoVerificadoException.class,
+    CuentaGoogleNoRegistradaException.class
+  })
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  public RespuestaError noAutorizado(RuntimeException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+
+  @ExceptionHandler(CodigoInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError codigoInvalido(CodigoInvalidoException e) {
+    return new RespuestaError(e.getMessage(), null);
+  }
+}

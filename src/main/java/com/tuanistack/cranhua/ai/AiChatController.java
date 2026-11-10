@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.ai;
 
 import com.tuanistack.cranhua.ai.dto.AiChatRequest;
 import com.tuanistack.cranhua.ai.dto.AiChatResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +19,7 @@ public class AiChatController {
   }
 
   @PostMapping("/chat")
+  @PreAuthorize("hasAnyRole('CAFETALERO', 'TOSTADOR', 'CAFETERIA')")
   public AiChatResponse chat(@RequestBody AiChatRequest request) {
     return new AiChatResponse(aiChatService.chat(request.message()));
   }

@@ -7,6 +7,31 @@ on:
     branches: [develop]
 
 jobs:
+  migraciones:
+    name: Migraciones
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # En un PR el checkout es el merge con develop: HEAD^1 es develop
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Revisar migraciones
+        run: |
+          dir=src/main/resources/db/migration
+          tocadas=$(git diff --name-only --diff-filter=DMR HEAD^1 HEAD -- "$dir")
+          if [ -n "$tocadas" ]; then
+            echo "::error::No se editan, renombran ni borran migraciones que ya están en develop: $tocadas"
+            exit 1
+          fi
+          repetidas=$(ls "$dir" | sed 's/__.*//' | sort | uniq -d)
+          if [ -n "$repetidas" ]; then
+            echo "::error::Versión de migración repetida: $repetidas"
+            exit 1
+          fi
+
   format:
     name: Format
     runs-on: ubuntu-latest
@@ -21,9 +46,11 @@ jobs:
           java-version: "21"
           distribution: temurin
 
+      # Versión fija: sin ella la acción toma la última y una release nueva rompe código ya formateado
       - name: Check Google Java Format
         uses: axel-op/googlejavaformat-action@v4
         with:
+          release-name: "v2.0.0"
           args: "--set-exit-if-changed"
           github-token: ${{ secrets.GITHUB_TOKEN }}
 

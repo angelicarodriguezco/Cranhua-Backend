@@ -9,6 +9,20 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  flyway:
+    out-of-order: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
   ai:
     google:
       genai:
@@ -24,12 +38,34 @@ spring:
         speech: none
         transcription: none
 
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
 management:
   endpoints:
     web:
       exposure:
         include: health
+  # Sin SMTP configurado el backend tiene que seguir saliendo como UP
+  health:
+    mail:
+      enabled: false
 
 app:
   cors:
     allowed-origins: http://localhost:4200
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  sesion:
+    secreto: ${JWT_SECRET:}
+    duracion: 8h
+  correo:
+    remitente: ${MAIL_USERNAME:}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
