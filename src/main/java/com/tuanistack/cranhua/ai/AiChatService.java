@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AiChatService {
 
   static final String NO_DISPONIBLE =
-          "Kiana no está disponible en este momento. Intentá de nuevo en un rato.";
+      "Kiana no está disponible en este momento. Intentá de nuevo en un rato.";
 
   private static final Logger log = LoggerFactory.getLogger(AiChatService.class);
 
@@ -26,12 +26,12 @@ public class AiChatService {
     String respuesta;
     try {
       respuesta =
-              chatClient
-                      .prompt()
-                      .user(message)
-                      .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
-                      .call()
-                      .content();
+          chatClient
+              .prompt()
+              .user(message)
+              .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
+              .call()
+              .content();
     } catch (RuntimeException e) {
       log.warn("El modelo de IA no respondió: {}", e.getMessage());
       throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, NO_DISPONIBLE, e);

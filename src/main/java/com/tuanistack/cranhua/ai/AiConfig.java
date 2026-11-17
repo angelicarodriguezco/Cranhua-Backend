@@ -11,18 +11,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiConfig {
 
-    private static final int MENSAJES_RECORDADOS = 20;
+  private static final int MENSAJES_RECORDADOS = 20;
 
-    @Bean
-    ChatMemory chatMemory() {
-        return MessageWindowChatMemory.builder()
-                .chatMemoryRepository(new InMemoryChatMemoryRepository())
-                .maxMessages(MENSAJES_RECORDADOS)
-                .build();
-    }
+  @Bean
+  ChatMemory chatMemory() {
+    return MessageWindowChatMemory.builder()
+        .chatMemoryRepository(new InMemoryChatMemoryRepository())
+        .maxMessages(MENSAJES_RECORDADOS)
+        .build();
+  }
 
-    @Bean
-    ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
-        return builder.defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build()).build();
-    }
+  @Bean
+  ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+    return builder.defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build()).build();
+  }
 }

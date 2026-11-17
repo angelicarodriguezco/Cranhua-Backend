@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.tuanistack.cranhua.ai.AiChatController;
 import com.tuanistack.cranhua.ai.AiChatService;
+import com.tuanistack.cranhua.ai.LimitadorMensajes;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -18,7 +19,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import com.tuanistack.cranhua.ai.LimitadorMensajes;
 
 @WebMvcTest(AiChatController.class)
 @Import({SecurityConfig.class, CorsConfig.class, JwtConfig.class, LimitadorMensajes.class})
@@ -30,7 +30,6 @@ class CorsConfigTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private AiChatService aiChatService;
-
 
   @Test
   void preflightFromAngularIsAllowed() throws Exception {
@@ -66,5 +65,4 @@ class CorsConfigTest {
         .andExpect(status().isForbidden())
         .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
   }
-
 }

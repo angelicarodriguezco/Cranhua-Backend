@@ -34,13 +34,13 @@ public class SecurityConfig {
       PathPatternRequestMatcher.withDefaults();
 
   private static final RequestMatcher RUTAS_PUBLICAS =
-          new OrRequestMatcher(
-                  RUTA.matcher(HttpMethod.OPTIONS, "/**"),
-                  RUTA.matcher(HttpMethod.GET, "/actuator/health"),
-                  RUTA.matcher(HttpMethod.GET, "/actuator/health/**"),
-                  RUTA.matcher("/api/auth/**"),
-                  RUTA.matcher("/api/publico/**"),
-                  RUTA.matcher(HttpMethod.POST, "/api/ai/chat"));
+      new OrRequestMatcher(
+          RUTA.matcher(HttpMethod.OPTIONS, "/**"),
+          RUTA.matcher(HttpMethod.GET, "/actuator/health"),
+          RUTA.matcher(HttpMethod.GET, "/actuator/health/**"),
+          RUTA.matcher("/api/auth/**"),
+          RUTA.matcher("/api/publico/**"),
+          RUTA.matcher(HttpMethod.POST, "/api/ai/chat"));
 
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

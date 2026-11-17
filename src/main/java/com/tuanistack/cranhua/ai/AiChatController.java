@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AiChatController {
 
   static final String DEMASIADOS_MENSAJES =
-          "Enviaste muchos mensajes seguidos. Esperá un minuto e intentá de nuevo.";
+      "Enviaste muchos mensajes seguidos. Esperá un minuto e intentá de nuevo.";
 
   private final AiChatService aiChatService;
   private final LimitadorMensajes limitador;
@@ -29,14 +29,14 @@ public class AiChatController {
 
   @PostMapping("/chat")
   public AiChatResponse chat(
-          @Valid @RequestBody AiChatRequest request, HttpServletRequest httpRequest) {
+      @Valid @RequestBody AiChatRequest request, HttpServletRequest httpRequest) {
     if (!limitador.permitir(httpRequest.getRemoteAddr())) {
       throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, DEMASIADOS_MENSAJES);
     }
     String conversationId =
-            request.conversationId() == null || request.conversationId().isBlank()
-                    ? UUID.randomUUID().toString()
-                    : request.conversationId();
+        request.conversationId() == null || request.conversationId().isBlank()
+            ? UUID.randomUUID().toString()
+            : request.conversationId();
     String respuesta = aiChatService.chat(conversationId, request.message());
     return new AiChatResponse(respuesta, conversationId);
   }

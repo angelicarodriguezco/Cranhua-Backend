@@ -34,13 +34,12 @@ class AiChatControllerTest {
 
   private static MockHttpServletRequestBuilder chat(String ip, String json) {
     return post("/api/ai/chat")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(json)
-            .with(
-                    request -> {
-                      request.setRemoteAddr(ip);
-                      return request;
-                    });
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(json)
+        .with(request -> {
+          request.setRemoteAddr(ip);
+          return request;
+        });
   }
 
   @Test
@@ -48,10 +47,10 @@ class AiChatControllerTest {
     when(aiChatService.chat(anyString(), eq("Hola"))).thenReturn("Hola, ¿en qué te ayudo?");
 
     mockMvc
-            .perform(chat("10.0.0.1", "{\"message\":\"Hola\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.reply").value("Hola, ¿en qué te ayudo?"))
-            .andExpect(jsonPath("$.conversationId").isNotEmpty());
+        .perform(chat("10.0.0.1", "{\"message\":\"Hola\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reply").value("Hola, ¿en qué te ayudo?"))
+        .andExpect(jsonPath("$.conversationId").isNotEmpty());
   }
 
   @Test
@@ -59,19 +58,19 @@ class AiChatControllerTest {
     when(aiChatService.chat("visita-1", "¿Y en Tarrazú?")).thenReturn("En Tarrazú hay tres.");
 
     mockMvc
-            .perform(
-                    chat("10.0.0.2", "{\"message\":\"¿Y en Tarrazú?\",\"conversationId\":\"visita-1\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.conversationId").value("visita-1"))
-            .andExpect(jsonPath("$.reply").value("En Tarrazú hay tres."));
+        .perform(
+            chat("10.0.0.2", "{\"message\":\"¿Y en Tarrazú?\",\"conversationId\":\"visita-1\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.conversationId").value("visita-1"))
+        .andExpect(jsonPath("$.reply").value("En Tarrazú hay tres."));
   }
 
   @Test
   void mensajeVacioDa400() throws Exception {
     mockMvc
-            .perform(chat("10.0.0.3", "{\"message\":\"   \"}"))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.errores.message").value("Escribí un mensaje."));
+        .perform(chat("10.0.0.3", "{\"message\":\"   \"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.message").value("Escribí un mensaje."));
     verify(aiChatService, never()).chat(anyString(), anyString());
   }
 
@@ -80,10 +79,10 @@ class AiChatControllerTest {
     String largo = "a".repeat(501);
 
     mockMvc
-            .perform(chat("10.0.0.4", "{\"message\":\"" + largo + "\"}"))
-            .andExpect(status().isBadRequest())
-            .andExpect(
-                    jsonPath("$.errores.message").value("El mensaje no puede pasar de 500 caracteres."));
+        .perform(chat("10.0.0.4", "{\"message\":\"" + largo + "\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.message").value("El mensaje no puede pasar de 500 caracteres."));
   }
 
   @Test
@@ -91,21 +90,21 @@ class AiChatControllerTest {
     when(aiChatService.chat(anyString(), anyString())).thenReturn("Ok");
 
     mockMvc
-            .perform(chat("10.0.0.5", "{\"message\":\"" + "a".repeat(500) + "\"}"))
-            .andExpect(status().isOk());
+        .perform(chat("10.0.0.5", "{\"message\":\"" + "a".repeat(500) + "\"}"))
+        .andExpect(status().isOk());
   }
 
   @Test
   void servicioCaidoDa503ConMensaje() throws Exception {
     when(aiChatService.chat(anyString(), eq("Hola")))
-            .thenThrow(
-                    new ResponseStatusException(
-                            HttpStatus.SERVICE_UNAVAILABLE, AiChatService.NO_DISPONIBLE));
+        .thenThrow(
+            new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE, AiChatService.NO_DISPONIBLE));
 
     mockMvc
-            .perform(chat("10.0.0.6", "{\"message\":\"Hola\"}"))
-            .andExpect(status().isServiceUnavailable())
-            .andExpect(jsonPath("$.mensaje").value(AiChatService.NO_DISPONIBLE));
+        .perform(chat("10.0.0.6", "{\"message\":\"Hola\"}"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.mensaje").value(AiChatService.NO_DISPONIBLE));
   }
 
   @Test
@@ -116,9 +115,9 @@ class AiChatControllerTest {
       mockMvc.perform(chat("10.0.0.7", "{\"message\":\"Hola\"}")).andExpect(status().isOk());
     }
     mockMvc
-            .perform(chat("10.0.0.7", "{\"message\":\"Hola\"}"))
-            .andExpect(status().isTooManyRequests())
-            .andExpect(jsonPath("$.mensaje").value(AiChatController.DEMASIADOS_MENSAJES));
+        .perform(chat("10.0.0.7", "{\"message\":\"Hola\"}"))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.mensaje").value(AiChatController.DEMASIADOS_MENSAJES));
 
     // Otro visitante no se ve afectado
     mockMvc.perform(chat("10.0.0.8", "{\"message\":\"Hola\"}")).andExpect(status().isOk());
