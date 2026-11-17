@@ -39,9 +39,9 @@ public class SecurityConfig {
           RUTA.matcher(HttpMethod.GET, "/actuator/health"),
           RUTA.matcher(HttpMethod.GET, "/actuator/health/**"),
           RUTA.matcher("/api/auth/**"),
-          RUTA.matcher("/api/publico/**"));
+          RUTA.matcher("/api/publico/**"),
+          RUTA.matcher(HttpMethod.POST, "/api/ai/chat"));
 
-  // Todo lo que no es público pide sesión; el rol de cada endpoint se valida con @PreAuthorize
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     HttpStatusEntryPoint responder401 = new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
