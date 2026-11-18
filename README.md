@@ -17,11 +17,14 @@ Servicios y secretos que el backend usa. Ningún valor real va en el README ni e
 ### Google Gemini (chat IA)
 
 - **Para qué:** endpoint `POST /api/ai/chat` (Spring AI).
-- **Variable:** `GEMINI_API_KEY` (obligatoria para que Docker Compose arranque; sin una llave válida el chat falla).
-- **Cómo obtenerla:**
+- **Variables:**
+  - `GEMINI_API_KEY` (obligatoria para que Docker Compose arranque; sin una llave válida el chat falla).
+  - `GEMINI_MODEL` (opcional; default `gemini-3.5-flash-lite`).
+  - `AI_PROVIDER` (opcional; default `google-genai`). Cambiar el proveedor en Maven seguiría pidiendo otro starter; este valor solo fija el chat model de Spring AI sin tocar código.
+- **Cómo obtener la API key:**
   1. Entrar a [Google AI Studio](https://aistudio.google.com/apikey) con una cuenta de Google.
   2. Crear una API key.
-  3. Pegarla en `.env` como `GEMINI_API_KEY`.
+  3. Pegarla en `.env` como `GEMINI_API_KEY`. Opcionalmente ajustar `GEMINI_MODEL` o `AI_PROVIDER` en el mismo archivo.
 
 ### Google Sign-In (registro / login)
 
@@ -84,6 +87,8 @@ Completar el `.env` con lo de la sección anterior. Resumen:
 | Variable                | Obligatoria | Dependencia |
 | ----------------------- | ----------- | ----------- |
 | `GEMINI_API_KEY`        | Sí          | Google Gemini |
+| `GEMINI_MODEL`          | No          | Google Gemini (default `gemini-3.5-flash-lite`) |
+| `AI_PROVIDER`           | No          | Spring AI chat (default `google-genai`) |
 | `GOOGLE_CLIENT_ID`      | No          | Google Sign-In |
 | `JWT_SECRET`            | Sí          | Secreto JWT (generado en local) |
 | `POSTGRES_DB`           | Sí          | PostgreSQL / PostGIS |

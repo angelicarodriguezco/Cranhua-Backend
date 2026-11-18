@@ -38,7 +38,8 @@ class AiChatServiceTest {
 
     assertThatThrownBy(() -> service.chat("c1", "Hola"))
         .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("503");
+        .hasMessageContaining("503")
+        .hasMessageContaining(AiChatService.NO_DISPONIBLE);
   }
 
   @Test
@@ -47,6 +48,17 @@ class AiChatServiceTest {
 
     assertThatThrownBy(() -> service.chat("c1", "Hola"))
         .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("503");
+        .hasMessageContaining("503")
+        .hasMessageContaining(AiChatService.NO_DISPONIBLE);
+  }
+
+  @Test
+  void siElModeloDevuelveTextoEnBlancoDa503() {
+    modeloResponde("   ");
+
+    assertThatThrownBy(() -> service.chat("c1", "Hola"))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("503")
+        .hasMessageContaining(AiChatService.NO_DISPONIBLE);
   }
 }
