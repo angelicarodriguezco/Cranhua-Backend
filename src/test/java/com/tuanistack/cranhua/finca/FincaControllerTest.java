@@ -491,7 +491,8 @@ class FincaControllerTest {
     agregarDueno(lucia, finca.getId(), "lucia@ejemplo.cr")
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede editarla o administrarla."));
     agregarDueno(tostador, finca.getId(), "lucia@ejemplo.cr").andExpect(status().isForbidden());
     mockMvc
         .perform(
@@ -574,7 +575,8 @@ class FincaControllerTest {
     quitarDueno(carlos, finca.getId(), lucia.getId())
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede editarla o administrarla."));
     mockMvc
         .perform(delete("/api/fincas/{id}/duenos/{cuentaId}", finca.getId(), lucia.getId()))
         .andExpect(status().isUnauthorized());
@@ -634,7 +636,8 @@ class FincaControllerTest {
     actualizar(lucia, finca.getId(), Map.of("nombre", "Robada"))
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede editarla o administrarla."));
   }
 
   @Test
@@ -692,8 +695,7 @@ class FincaControllerTest {
     fincaRepository.saveAndFlush(vieja);
 
     actualizar(andres, propia.getId(), Map.of("perimetro", CUADRADO)).andExpect(status().isOk());
-    actualizar(andres, propia.getId(), Map.of("perimetro", SOBREPUESTO))
-        .andExpect(status().isOk());
+    actualizar(andres, propia.getId(), Map.of("perimetro", SOBREPUESTO)).andExpect(status().isOk());
   }
 
   @Test
@@ -757,7 +759,8 @@ class FincaControllerTest {
     eliminarFinca(lucia, finca.getId())
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede editarla o administrarla."));
   }
 
   @Test

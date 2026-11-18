@@ -128,12 +128,11 @@ public class FincaService {
     Optional.ofNullable(request.canton()).ifPresent(finca::setCanton);
     Optional.ofNullable(request.provincia()).ifPresent(finca::setProvincia);
     Optional.ofNullable(request.perimetro())
-        .ifPresent(
-            puntos -> {
-              Polygon perimetro = validarPerimetro(puntos);
-              asegurarSinSuperposicion(perimetro, finca.getId());
-              finca.setPerimetro(perimetro);
-            });
+        .ifPresent(puntos -> {
+          Polygon perimetro = validarPerimetro(puntos);
+          asegurarSinSuperposicion(perimetro, finca.getId());
+          finca.setPerimetro(perimetro);
+        });
 
     Finca guardada = fincaRepository.saveAndFlush(finca);
     return FincaResponse.de(guardada, fincaRepository.areaHectareas(guardada.getId()));
@@ -197,15 +196,14 @@ public class FincaService {
   private void asegurarSinSuperposicion(Polygon perimetro, UUID excluirId) {
     fincaRepository
         .buscarSuperpuesta(perimetro, excluirId)
-        .ifPresent(
-            otra -> {
-              throw new FincaSuperpuestaException(
-                  new ConflictoFinca(
-                      otra.getId(),
-                      otra.getNombre(),
-                      FincaResponse.duenos(otra),
-                      GeometriaUtil.puntos(otra.getPerimetro())));
-            });
+        .ifPresent(otra -> {
+          throw new FincaSuperpuestaException(
+              new ConflictoFinca(
+                  otra.getId(),
+                  otra.getNombre(),
+                  FincaResponse.duenos(otra),
+                  GeometriaUtil.puntos(otra.getPerimetro())));
+        });
   }
 
   private static Polygon validarPerimetro(List<Coordenada> puntos) {
