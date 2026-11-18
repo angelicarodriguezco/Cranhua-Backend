@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
 
@@ -25,4 +26,15 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
           """,
       nativeQuery = true)
   List<PuntoMapa> puntosMapa();
+
+  // Cafeterías activas con al menos un café del menú cuyo código es un lote de la finca
+  @Query(
+      """
+      select distinct c from ItemMenu i
+      join i.cafeteria c
+      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+      where co.finca.id = :fincaId and c.eliminada = false
+      order by c.nombre
+      """)
+  List<Cafeteria> vendenCafeDeFinca(@Param("fincaId") UUID fincaId);
 }

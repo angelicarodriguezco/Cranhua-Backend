@@ -19,7 +19,6 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
 
   List<Finca> findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(UUID cuentaId);
 
-  // Compartir un borde con la finca vecina se permite; solaparse no
   @Query(
       value =
           """
@@ -39,7 +38,6 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
       nativeQuery = true)
   BigDecimal areaHectareas(@Param("id") UUID id);
 
-  // Cada fila es [id, área en hectáreas]
   @Query(
       value =
           "select id, round(cast(ST_Area(perimetro::geography) / 10000 as numeric), 2)"
@@ -47,7 +45,16 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
       nativeQuery = true)
   List<Object[]> areasHectareas(@Param("ids") Collection<UUID> ids);
 
-  // El pin del mapa va en el centro del polígono, no en la ubicación guardada
+  @Query(
+      """
+      select distinct f from ItemMenu i
+      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+      join co.finca f
+      where i.cafeteria.id = :cafeteriaId and f.eliminada = false
+      order by f.nombre
+      """)
+  List<Finca> originanMenuDeCafeteria(@Param("cafeteriaId") UUID cafeteriaId);
+
   @Query(
       value =
           """
