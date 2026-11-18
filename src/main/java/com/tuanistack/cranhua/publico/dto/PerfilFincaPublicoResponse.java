@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.tuanistack.cranhua.finca.Proceso;
 import com.tuanistack.cranhua.finca.ZonaCafetalera;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;

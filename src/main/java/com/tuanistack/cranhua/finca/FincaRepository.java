@@ -47,13 +47,12 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
   List<Object[]> areasHectareas(@Param("ids") Collection<UUID> ids);
 
   @Query(
-          """
-          select distinct f from ItemMenu i
-          join Cosecha co on co.codigoLote = i.codigoTrazabilidad
-          join co.finca f
-          where i.cafeteria.id = :cafeteriaId and f.eliminada = false
-          order by f.nombre
-          """)
+      """
+      select distinct f from ItemMenu i
+      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+      join co.finca f
+      where i.cafeteria.id = :cafeteriaId and f.eliminada = false
+      order by f.nombre
+      """)
   List<Finca> originanMenuDeCafeteria(@Param("cafeteriaId") UUID cafeteriaId);
-
 }
