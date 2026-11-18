@@ -80,6 +80,40 @@ class CosechaTest {
   }
 
   @Test
+  void lasMermasSeCalculanSobreElPesoAnterior() {
+    Cosecha cosecha = cosechaLavada();
+    cosecha.setPesoTrasBeneficiadoKg(new BigDecimal("640.00"));
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("576.00"));
+
+    assertThat(cosecha.getMermaBeneficiadoPorcentaje()).isEqualByComparingTo("20.00");
+    assertThat(cosecha.getMermaSeleccionPorcentaje()).isEqualByComparingTo("10.00");
+  }
+
+  @Test
+  void lasMermasSeRedondeanADosDecimales() {
+    Cosecha cosecha = cosechaLavada();
+    cosecha.setPesoTrasBeneficiadoKg(new BigDecimal("700.00"));
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("600.00"));
+
+    // 100 / 800 = 12,5 % y 100 / 700 = 14,2857... %
+    assertThat(cosecha.getMermaBeneficiadoPorcentaje()).isEqualTo(new BigDecimal("12.50"));
+    assertThat(cosecha.getMermaSeleccionPorcentaje()).isEqualTo(new BigDecimal("14.29"));
+  }
+
+  @Test
+  void sinAmbosPesosLaMermaEsNull() {
+    Cosecha cosecha = cosechaLavada();
+
+    assertThat(cosecha.getMermaBeneficiadoPorcentaje()).isNull();
+    assertThat(cosecha.getMermaSeleccionPorcentaje()).isNull();
+
+    cosecha.setPesoTrasBeneficiadoKg(new BigDecimal("640.00"));
+
+    assertThat(cosecha.getMermaBeneficiadoPorcentaje()).isEqualByComparingTo("20.00");
+    assertThat(cosecha.getMermaSeleccionPorcentaje()).isNull();
+  }
+
+  @Test
   void descontarCeroONegativoFalla() {
     Cosecha cosecha = cosechaLavada();
     cosecha.registrarPesoTrasSeleccion(new BigDecimal("100.00"));

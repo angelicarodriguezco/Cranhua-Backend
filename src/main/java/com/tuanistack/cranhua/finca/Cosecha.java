@@ -16,6 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -202,6 +203,24 @@ public class Cosecha {
 
   public BigDecimal getPesoTrasSeleccionKg() {
     return pesoTrasSeleccionKg;
+  }
+
+  public BigDecimal getMermaBeneficiadoPorcentaje() {
+    return merma(cantidadCosechadaKg, pesoTrasBeneficiadoKg);
+  }
+
+  public BigDecimal getMermaSeleccionPorcentaje() {
+    return merma(pesoTrasBeneficiadoKg, pesoTrasSeleccionKg);
+  }
+
+  private static BigDecimal merma(BigDecimal antes, BigDecimal despues) {
+    if (antes == null || despues == null) {
+      return null;
+    }
+    return antes
+        .subtract(despues)
+        .multiply(BigDecimal.valueOf(100))
+        .divide(antes, 2, RoundingMode.HALF_UP);
   }
 
   public BigDecimal getCaracolilloKg() {
