@@ -27,7 +27,8 @@ public record RegistrarCosechaRequest(
         Integer alturaMsnm,
     @NotNull(message = "Ingresá la fecha de inicio.") LocalDate fechaInicio,
     @NotNull(message = "Ingresá la fecha de fin.") LocalDate fechaFin,
-    @NotEmpty(message = "Agregá al menos un proceso.") List<@NotNull(message = "Falta un proceso.") @Valid RepartoRequest> procesos,
+    @NotEmpty(message = "Agregá al menos un proceso.")
+        List<@NotNull(message = "Falta un proceso.") @Valid RepartoRequest> procesos,
     @NotNull(message = "Ingresá la cantidad cosechada.")
         @DecimalMin(value = "0.01", message = "La cantidad cosechada tiene que ser mayor a 0.")
         @Digits(integer = 8, fraction = 2, message = "La cantidad cosechada no es válida.")
