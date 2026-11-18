@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.mapa.PuntoMapa;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
@@ -18,18 +19,23 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
 
   List<Finca> findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(UUID cuentaId);
 
-  // Compartir un borde con la finca vecina se permite; solaparse no
   @Query(
       value =
           """
           select * from finca f
           where f.eliminada = false
+            and (cast(:excluirId as uuid) is null or f.id <> cast(:excluirId as uuid))
             and ST_Intersects(f.perimetro, :perimetro)
             and not ST_Touches(f.perimetro, :perimetro)
           limit 1
           """,
       nativeQuery = true)
-  Optional<Finca> buscarSuperpuesta(@Param("perimetro") Polygon perimetro);
+  Optional<Finca> buscarSuperpuesta(
+      @Param("perimetro") Polygon perimetro, @Param("excluirId") UUID excluirId);
+
+  default Optional<Finca> buscarSuperpuesta(Polygon perimetro) {
+    return buscarSuperpuesta(perimetro, null);
+  }
 
   @Query(
       value =
@@ -38,11 +44,32 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
       nativeQuery = true)
   BigDecimal areaHectareas(@Param("id") UUID id);
 
-  // Cada fila es [id, área en hectáreas]
   @Query(
       value =
           "select id, round(cast(ST_Area(perimetro::geography) / 10000 as numeric), 2)"
               + " from finca where id in (:ids)",
       nativeQuery = true)
   List<Object[]> areasHectareas(@Param("ids") Collection<UUID> ids);
+
+  @Query(
+      """
+      select distinct f from ItemMenu i
+      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+      join co.finca f
+      where i.cafeteria.id = :cafeteriaId and f.eliminada = false
+      order by f.nombre
+      """)
+  List<Finca> originanMenuDeCafeteria(@Param("cafeteriaId") UUID cafeteriaId);
+
+  @Query(
+      value =
+          """
+          select id, nombre, canton, provincia,
+                 ST_Y(ST_Centroid(perimetro)) as lat, ST_X(ST_Centroid(perimetro)) as lng
+          from finca
+          where eliminada = false
+          order by nombre, id
+          """,
+      nativeQuery = true)
+  List<PuntoMapa> puntosMapa();
 }

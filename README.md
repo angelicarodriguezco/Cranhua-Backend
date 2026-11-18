@@ -17,11 +17,14 @@ Servicios y secretos que el backend usa. Ningún valor real va en el README ni e
 ### Google Gemini (chat IA)
 
 - **Para qué:** endpoint `POST /api/ai/chat` (Spring AI).
-- **Variable:** `GEMINI_API_KEY` (obligatoria para que Docker Compose arranque; sin una llave válida el chat falla).
-- **Cómo obtenerla:**
+- **Variables:**
+  - `GEMINI_API_KEY` (obligatoria para que Docker Compose arranque; sin una llave válida el chat falla).
+  - `GEMINI_MODEL` (opcional; default `gemini-3.5-flash-lite`).
+  - `AI_PROVIDER` (opcional; default `google-genai`). Cambiar el proveedor en Maven seguiría pidiendo otro starter; este valor solo fija el chat model de Spring AI sin tocar código.
+- **Cómo obtener la API key:**
   1. Entrar a [Google AI Studio](https://aistudio.google.com/apikey) con una cuenta de Google.
   2. Crear una API key.
-  3. Pegarla en `.env` como `GEMINI_API_KEY`.
+  3. Pegarla en `.env` como `GEMINI_API_KEY`. Opcionalmente ajustar `GEMINI_MODEL` o `AI_PROVIDER` en el mismo archivo.
 
 ### Google Sign-In (registro / login)
 
@@ -84,6 +87,8 @@ Completar el `.env` con lo de la sección anterior. Resumen:
 | Variable                | Obligatoria | Dependencia |
 | ----------------------- | ----------- | ----------- |
 | `GEMINI_API_KEY`        | Sí          | Google Gemini |
+| `GEMINI_MODEL`          | No          | Google Gemini (default `gemini-3.5-flash-lite`) |
+| `AI_PROVIDER`           | No          | Spring AI chat (default `google-genai`) |
 | `GOOGLE_CLIENT_ID`      | No          | Google Sign-In |
 | `JWT_SECRET`            | Sí          | Secreto JWT (generado en local) |
 | `POSTGRES_DB`           | Sí          | PostgreSQL / PostGIS |
@@ -186,6 +191,7 @@ Debe mostrar la versión de PostGIS y una fila con `es_valido = t`, el área en 
 | `GET`  | `/api/tostadores/actual`         | Tostador | Negocio de la sesión. 404 si todavía no registró uno                                                                                                                                    |
 | `GET`  | `/api/tostadores/{id}`           | Sesión  | Negocio de tueste: `{id, cuentaId, nombre, nombreContacto, telefono, correo, descripcion, canton, provincia, estilos, portadaUrl}`. 404 si no existe o está eliminado                     |
 | `PATCH`| `/api/tostadores/{id}`           | Tostador | Edita el negocio propio con un body parcial; `estilos` reemplaza la lista y `descripcion`/`portadaUrl` en blanco se borran. 403 si el negocio es de otra cuenta                         |
+| `GET`  | `/api/publico/cantones`          | Público | Catálogo de cantones: `[{id, nombre, provincia, zonaCafetalera, cabecera: {lat, lng}}]`, ordenado por provincia y nombre. `?provincia=Cartago` filtra (sin importar mayúsculas). El `id` es el código del INEC |
 
 La sesión es un JWT firmado (HS256) en la cookie `cranhua_sesion` (HttpOnly, Secure, SameSite=Strict). El token trae el id de la cuenta en `sub`, todos sus roles en `roles`, la versión de sesión de la cuenta en `version_sesion` (restablecer la contraseña la sube y deja sin efecto los tokens anteriores) y vence a las 8 horas (`app.sesion.duracion`); la cookie vence al mismo tiempo. Registro e inicio de sesión la crean, cerrar sesión la borra. Las rutas que piden sesión responden 401 si no hay cookie o el token no es válido. Desde Angular las peticiones tienen que ir con `withCredentials: true` para que el navegador mande la cookie.
 

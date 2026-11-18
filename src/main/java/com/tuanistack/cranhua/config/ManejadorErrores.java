@@ -8,6 +8,7 @@ import com.tuanistack.cranhua.auth.CorreoEnUsoException;
 import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
 import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
 import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
+import com.tuanistack.cranhua.finca.CosechaInvalidaException;
 import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
 import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
 import com.tuanistack.cranhua.finca.UltimoDuenoException;
@@ -50,6 +51,12 @@ public class ManejadorErrores {
       return new RespuestaError(DATOS_INVALIDOS, Map.of(campo.getFieldName(), "Valor inválido."));
     }
     return new RespuestaError(DATOS_INVALIDOS, null);
+  }
+
+  @ExceptionHandler(CosechaInvalidaException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError cosechaInvalida(CosechaInvalidaException e) {
+    return new RespuestaError(DATOS_INVALIDOS, e.getErrores());
   }
 
   @ExceptionHandler(PerimetroInvalidoException.class)

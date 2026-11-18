@@ -1,3 +1,3 @@
 package com.tuanistack.cranhua.ai.dto;
 
-public record AiChatResponse(String reply) {}
+public record AiChatResponse(String reply, String conversationId) {}
