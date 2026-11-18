@@ -24,12 +24,18 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
           """
           select * from finca f
           where f.eliminada = false
+            and (cast(:excluirId as uuid) is null or f.id <> cast(:excluirId as uuid))
             and ST_Intersects(f.perimetro, :perimetro)
             and not ST_Touches(f.perimetro, :perimetro)
           limit 1
           """,
       nativeQuery = true)
-  Optional<Finca> buscarSuperpuesta(@Param("perimetro") Polygon perimetro);
+  Optional<Finca> buscarSuperpuesta(
+      @Param("perimetro") Polygon perimetro, @Param("excluirId") UUID excluirId);
+
+  default Optional<Finca> buscarSuperpuesta(Polygon perimetro) {
+    return buscarSuperpuesta(perimetro, null);
+  }
 
   @Query(
       value =
