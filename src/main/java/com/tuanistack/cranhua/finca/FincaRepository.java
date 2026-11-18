@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.mapa.PuntoMapa;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
@@ -45,4 +46,17 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
               + " from finca where id in (:ids)",
       nativeQuery = true)
   List<Object[]> areasHectareas(@Param("ids") Collection<UUID> ids);
+
+  // El pin del mapa va en el centro del polígono, no en la ubicación guardada
+  @Query(
+      value =
+          """
+          select id, nombre, canton, provincia,
+                 ST_Y(ST_Centroid(perimetro)) as lat, ST_X(ST_Centroid(perimetro)) as lng
+          from finca
+          where eliminada = false
+          order by nombre, id
+          """,
+      nativeQuery = true)
+  List<PuntoMapa> puntosMapa();
 }
