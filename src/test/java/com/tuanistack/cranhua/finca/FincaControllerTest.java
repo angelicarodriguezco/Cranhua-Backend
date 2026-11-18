@@ -5,11 +5,14 @@ import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -412,6 +415,19 @@ class FincaControllerTest {
         delete("/api/fincas/{id}/duenos/{cuentaId}", fincaId, duenoId).cookie(sesion(cuenta)));
   }
 
+  private ResultActions actualizar(Cuenta cuenta, UUID fincaId, Map<String, Object> cambios)
+      throws Exception {
+    return mockMvc.perform(
+        patch("/api/fincas/{id}", fincaId)
+            .cookie(sesion(cuenta))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(cambios)));
+  }
+
+  private ResultActions eliminarFinca(Cuenta cuenta, UUID fincaId) throws Exception {
+    return mockMvc.perform(delete("/api/fincas/{id}", fincaId).cookie(sesion(cuenta)));
+  }
+
   @Test
   void agregarUnDuenoPorCorreo() throws Exception {
     Finca finca = fincaDe(andres);
@@ -475,7 +491,7 @@ class FincaControllerTest {
     agregarDueno(lucia, finca.getId(), "lucia@ejemplo.cr")
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede administrar sus dueños."));
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
     agregarDueno(tostador, finca.getId(), "lucia@ejemplo.cr").andExpect(status().isForbidden());
     mockMvc
         .perform(
@@ -558,10 +574,190 @@ class FincaControllerTest {
     quitarDueno(carlos, finca.getId(), lucia.getId())
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje").value("Solo un dueño de la finca puede administrar sus dueños."));
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
     mockMvc
         .perform(delete("/api/fincas/{id}/duenos/{cuentaId}", finca.getId(), lucia.getId()))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void editaLosDatosDeLaFinca() throws Exception {
+    Finca finca = fincaDe(andres);
+    Map<String, Object> cambios = new LinkedHashMap<>();
+    cambios.put("nombre", "Finca El Roble");
+    cambios.put("descripcion", "Nueva descripción de altura.");
+    cambios.put("zonaCafetalera", "Valle Central");
+    cambios.put("canton", "Naranjo");
+    cambios.put("provincia", "Alajuela");
+    cambios.put("ubicacion", punto(9.705, -84.095));
+    cambios.put("perimetro", LEJANO);
+
+    actualizar(andres, finca.getId(), cambios)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(finca.getId().toString()))
+        .andExpect(jsonPath("$.nombre").value("Finca El Roble"))
+        .andExpect(jsonPath("$.descripcion").value("Nueva descripción de altura."))
+        .andExpect(jsonPath("$.zonaCafetalera").value("Valle Central"))
+        .andExpect(jsonPath("$.canton").value("Naranjo"))
+        .andExpect(jsonPath("$.provincia").value("Alajuela"))
+        .andExpect(jsonPath("$.ubicacion.lat").value(9.705))
+        .andExpect(jsonPath("$.ubicacion.lng").value(-84.095))
+        .andExpect(jsonPath("$.perimetro", hasSize(4)))
+        .andExpect(jsonPath("$.perimetro[0].lat").value(9.700))
+        .andExpect(jsonPath("$.perimetro[0].lng").value(-84.100))
+        .andExpect(jsonPath("$.areaHectareas", greaterThan(0.0)));
+  }
+
+  @Test
+  void editarSoloCambiaLoQueViene() throws Exception {
+    String respuesta =
+        registrar(andres, finca("Finca La Catalina", CUADRADO))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    UUID id = UUID.fromString(objectMapper.readTree(respuesta).get("id").asText());
+
+    actualizar(andres, id, Map.of("nombre", "Finca Renombrada"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nombre").value("Finca Renombrada"))
+        .andExpect(jsonPath("$.descripcion").value("Café de altura con sombra de guaba."))
+        .andExpect(jsonPath("$.zonaCafetalera").value("Tarrazú"))
+        .andExpect(jsonPath("$.canton").value("Tarrazú"))
+        .andExpect(jsonPath("$.ubicacion.lat").value(9.655));
+  }
+
+  @Test
+  void soloUnDuenoPuedeEditarLaFinca() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    actualizar(lucia, finca.getId(), Map.of("nombre", "Robada"))
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
+  }
+
+  @Test
+  void editarFincaInexistenteOEliminadaDa404() throws Exception {
+    Finca eliminada = fincaDe(andres);
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+
+    for (UUID id : List.of(UUID.randomUUID(), eliminada.getId())) {
+      actualizar(andres, id, Map.of("nombre", "Nueva"))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+    }
+  }
+
+  @Test
+  void editarConPerimetroSobrepuestoDa409() throws Exception {
+    String respuesta =
+        registrar(lucia, finca("Finca El Tucán", CUADRADO))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String idTucan = objectMapper.readTree(respuesta).get("id").asText();
+    String propia =
+        registrar(andres, finca("Finca La Catalina", LEJANO))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    UUID idPropia = UUID.fromString(objectMapper.readTree(propia).get("id").asText());
+
+    actualizar(andres, idPropia, Map.of("perimetro", SOBREPUESTO))
+        .andExpect(status().isConflict())
+        .andExpect(
+            jsonPath("$.mensaje")
+                .value("El terreno se sobrepone con la finca \"Finca El Tucán\" de Lucía Mora."))
+        .andExpect(jsonPath("$.conflicto.fincaId").value(idTucan))
+        .andExpect(jsonPath("$.conflicto.nombre").value("Finca El Tucán"))
+        .andExpect(jsonPath("$.conflicto.duenos", hasSize(1)))
+        .andExpect(jsonPath("$.conflicto.duenos[0].id").value(lucia.getId().toString()))
+        .andExpect(jsonPath("$.conflicto.duenos[0].nombreCompleto").value("Lucía Mora"))
+        .andExpect(jsonPath("$.conflicto.perimetro", hasSize(4)));
+  }
+
+  @Test
+  void editarPerimetroSobreSiMismaOEliminadaSePermite() throws Exception {
+    Finca propia = fincaDe(andres);
+    registrar(lucia, finca("Finca Vieja", COLINDANTE)).andExpect(status().isCreated());
+    Finca vieja =
+        fincaRepository.findByDuenosIdAndEliminadaFalse(lucia.getId()).stream()
+            .findFirst()
+            .orElseThrow();
+    vieja.eliminar();
+    fincaRepository.saveAndFlush(vieja);
+
+    actualizar(andres, propia.getId(), Map.of("perimetro", CUADRADO)).andExpect(status().isOk());
+    actualizar(andres, propia.getId(), Map.of("perimetro", SOBREPUESTO))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void eliminarConCoDuenoSoloQuitaAlCaller() throws Exception {
+    Finca finca = fincaDe(andres, lucia);
+
+    eliminarFinca(andres, finca.getId()).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(0)));
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(lucia)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].id", contains(finca.getId().toString())));
+
+    Finca guardada = fincaRepository.findById(finca.getId()).orElseThrow();
+    assertThat(guardada.isEliminada()).isFalse();
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(andres.getId())).isEmpty();
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(lucia.getId()))
+        .extracting(Finca::getId)
+        .containsExactly(finca.getId());
+  }
+
+  @Test
+  void eliminarComoUltimoDuenoHaceSoftDelete() throws Exception {
+    Finca finca = fincaDe(andres);
+    Cosecha cosecha = cosecha(finca, "Caturra", LocalDate.of(2026, 1, 5), "300.00");
+    cosecha.setCodigoLote("crh-2026-0099");
+    cosechaRepository.saveAndFlush(cosecha);
+    UUID cosechaId = cosecha.getId();
+
+    eliminarFinca(andres, finca.getId()).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/fincas").cookie(sesion(andres)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(0)));
+    mockMvc
+        .perform(get("/api/fincas/{id}", finca.getId()).cookie(sesion(andres)))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/publico/mapa").param("tipo", "FINCA"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[*].id", not(hasItem(finca.getId().toString()))));
+
+    Finca guardada = fincaRepository.findById(finca.getId()).orElseThrow();
+    assertThat(guardada.isEliminada()).isTrue();
+    assertThat(fincaRepository.findByDuenosIdAndEliminadaFalse(andres.getId())).isEmpty();
+
+    Cosecha cosechaGuardada = cosechaRepository.findById(cosechaId).orElseThrow();
+    assertThat(cosechaGuardada.getCodigoLote()).isEqualTo("CRH-2026-0099");
+    assertThat(cosechaGuardada.getFinca().getId()).isEqualTo(finca.getId());
+  }
+
+  @Test
+  void soloUnDuenoPuedeEliminarLaFinca() throws Exception {
+    Finca finca = fincaDe(andres);
+
+    eliminarFinca(lucia, finca.getId())
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje").value("Solo un dueño de la finca puede editarla o administrarla."));
   }
 
   @Test

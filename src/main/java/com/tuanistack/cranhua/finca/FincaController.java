@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.finca.dto.ActualizarFincaRequest;
 import com.tuanistack.cranhua.finca.dto.AgregarDuenoRequest;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
 import com.tuanistack.cranhua.finca.dto.FincaResponse;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +50,22 @@ public class FincaController {
   @PreAuthorize("hasRole('CAFETALERO')")
   public FincaResponse obtener(@PathVariable UUID id, Authentication authentication) {
     return fincaService.obtener(id, UUID.fromString(authentication.getName()));
+  }
+
+  @PatchMapping("/{id}")
+  @PreAuthorize("hasRole('CAFETALERO')")
+  public FincaResponse actualizar(
+      @PathVariable UUID id,
+      @Valid @RequestBody ActualizarFincaRequest request,
+      Authentication authentication) {
+    return fincaService.actualizar(id, request, UUID.fromString(authentication.getName()));
+  }
+
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasRole('CAFETALERO')")
+  public ResponseEntity<Void> eliminar(@PathVariable UUID id, Authentication authentication) {
+    fincaService.eliminar(id, UUID.fromString(authentication.getName()));
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{id}/cosechas")
