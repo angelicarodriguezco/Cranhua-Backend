@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.mapa.PuntoMapa;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +19,6 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
 
   List<Finca> findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(UUID cuentaId);
 
-  // Compartir un borde con la finca vecina se permite; solaparse no
   @Query(
       value =
           """
@@ -37,8 +37,7 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
               + " from finca where id = :id",
       nativeQuery = true)
   BigDecimal areaHectareas(@Param("id") UUID id);
-
-  // Cada fila es [id, área en hectáreas]
+  
   @Query(
       value =
           "select id, round(cast(ST_Area(perimetro::geography) / 10000 as numeric), 2)"
@@ -55,5 +54,16 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
           order by f.nombre
           """)
   List<Finca> originanMenuDeCafeteria(@Param("cafeteriaId") UUID cafeteriaId);
-
+  
+  @Query(
+      value =
+          """
+          select id, nombre, canton, provincia,
+                 ST_Y(ST_Centroid(perimetro)) as lat, ST_X(ST_Centroid(perimetro)) as lng
+          from finca
+          where eliminada = false
+          order by nombre, id
+          """,
+      nativeQuery = true)
+  List<PuntoMapa> puntosMapa();
 }
