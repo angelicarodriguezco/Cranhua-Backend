@@ -19,6 +19,8 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
 
   List<Finca> findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(UUID cuentaId);
 
+  long countByDuenosIdAndEliminadaFalse(UUID cuentaId);
+
   @Query(
       value =
           """

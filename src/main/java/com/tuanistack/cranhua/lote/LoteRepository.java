@@ -1,8 +1,12 @@
 package com.tuanistack.cranhua.lote;
 
+import com.tuanistack.cranhua.historial.dto.LoteVendidoResponse;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +30,41 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
       order by s.respondidaEn desc
       """)
   List<Lote> findDelTostador(@Param("tostadorId") UUID tostadorId);
+
+  @Query(
+      value =
+          """
+          select new com.tuanistack.cranhua.historial.dto.LoteVendidoResponse(
+            l.id, l.codigo, c.id, f.id, f.nombre, c.variedad, t.nombreCompleto,
+            s.cantidadKg, s.precioKg, s.totalEstimado, s.respondidaEn)
+          from Lote l
+          join l.solicitud s
+          join s.tostador t
+          join s.cosecha c
+          join c.finca f
+          where f.eliminada = false
+            and exists (select d from f.duenos d where d.id = :duenoId)
+            and (:fincaId is null or f.id = :fincaId)
+            and s.respondidaEn >= :desde
+            and s.respondidaEn < :hasta
+          order by s.respondidaEn desc, l.id
+          """,
+      countQuery =
+          """
+          select count(l) from Lote l
+          join l.solicitud s
+          join s.cosecha c
+          join c.finca f
+          where f.eliminada = false
+            and exists (select d from f.duenos d where d.id = :duenoId)
+            and (:fincaId is null or f.id = :fincaId)
+            and s.respondidaEn >= :desde
+            and s.respondidaEn < :hasta
+          """)
+  Page<LoteVendidoResponse> vendidosDelDueno(
+      @Param("duenoId") UUID duenoId,
+      @Param("fincaId") UUID fincaId,
+      @Param("desde") Instant desde,
+      @Param("hasta") Instant hasta,
+      Pageable pageable);
 }
