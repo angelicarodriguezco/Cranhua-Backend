@@ -44,10 +44,8 @@ public class SolicitudService {
         cosechaRepository
             .findById(request.cosechaId())
             .filter(c -> !c.getFinca().isEliminada())
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
 
     if (cosecha.getFinca().esDueno(cuentaId)) {
       throw new ResponseStatusException(
@@ -69,8 +67,7 @@ public class SolicitudService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
     Solicitud solicitud =
-        solicitudRepository.saveAndFlush(
-            new Solicitud(cosecha, tostador, request.cantidadKg()));
+        solicitudRepository.saveAndFlush(new Solicitud(cosecha, tostador, request.cantidadKg()));
     return SolicitudResponse.de(solicitud, null);
   }
 

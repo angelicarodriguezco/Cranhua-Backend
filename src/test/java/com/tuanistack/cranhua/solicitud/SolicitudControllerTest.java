@@ -155,8 +155,7 @@ class SolicitudControllerTest {
   void cantidadInvalidaDa400() throws Exception {
     crear(tostador, cosecha.getId(), "0")
         .andExpect(status().isBadRequest())
-        .andExpect(
-            jsonPath("$.errores.cantidadKg").value("La cantidad tiene que ser mayor a 0."));
+        .andExpect(jsonPath("$.errores.cantidadKg").value("La cantidad tiene que ser mayor a 0."));
     crear(tostador, cosecha.getId(), OMITIR)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errores.cantidadKg").value("Ingresá la cantidad en kg."));
@@ -170,8 +169,7 @@ class SolicitudControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(
             jsonPath("$.mensaje")
-                .value(
-                    "No hay suficiente café disponible: pedís 500.01 kg y quedan 500.00 kg."));
+                .value("No hay suficiente café disponible: pedís 500.01 kg y quedan 500.00 kg."));
 
     assertThat(solicitudRepository.count()).isZero();
     assertThat(kgDisponibles()).isEqualByComparingTo("500.00");
