@@ -20,6 +20,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -292,5 +293,12 @@ public class Cosecha {
 
   public List<ProcesoReparto> getProcesos() {
     return procesos;
+  }
+
+  public Proceso getProcesoPrincipal() {
+    return procesos.stream()
+        .max(Comparator.comparing(ProcesoReparto::getPorcentaje))
+        .map(ProcesoReparto::getProceso)
+        .orElse(null);
   }
 }
