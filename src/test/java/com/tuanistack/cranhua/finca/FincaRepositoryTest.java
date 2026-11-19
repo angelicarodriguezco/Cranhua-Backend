@@ -185,4 +185,64 @@ class FincaRepositoryTest {
 
     assertThat(definicion).containsIgnoringCase("using gist (perimetro)");
   }
+
+  static Polygon perimetroSolapado() {
+    return GEOMETRIA.createPolygon(
+        new Coordinate[] {
+          new Coordinate(-84.0220, 9.6580),
+          new Coordinate(-84.0180, 9.6580),
+          new Coordinate(-84.0180, 9.6630),
+          new Coordinate(-84.0220, 9.6630),
+          new Coordinate(-84.0220, 9.6580)
+        });
+  }
+
+  @Test
+  void buscarSuperpuestaSinExclusionEncuentraLaMismaFinca() {
+    Finca finca = fincaRepository.saveAndFlush(nuevaFinca());
+    entityManager.clear();
+
+    assertThat(fincaRepository.buscarSuperpuesta(finca.getPerimetro()))
+        .get()
+        .extracting(Finca::getId)
+        .isEqualTo(finca.getId());
+    assertThat(fincaRepository.buscarSuperpuesta(finca.getPerimetro(), finca.getId())).isEmpty();
+  }
+
+  @Test
+  void buscarSuperpuestaExcluyeLaPropiaYDetectaOtra() {
+    Finca propia = fincaRepository.saveAndFlush(nuevaFinca());
+    Finca otra =
+        fincaRepository.saveAndFlush(
+            new Finca(
+                "Finca Vecina",
+                perimetroSolapado(),
+                GEOMETRIA.createPoint(new Coordinate(-84.0200, 9.6605)),
+                "Tarrazú",
+                "San José"));
+    entityManager.clear();
+
+    assertThat(fincaRepository.buscarSuperpuesta(propia.getPerimetro(), propia.getId()))
+        .get()
+        .extracting(Finca::getId)
+        .isEqualTo(otra.getId());
+  }
+
+  @Test
+  void buscarSuperpuestaIgnoraFincasEliminadas() {
+    Finca activa = fincaRepository.saveAndFlush(nuevaFinca());
+    Finca eliminada =
+        fincaRepository.saveAndFlush(
+            new Finca(
+                "Finca Borrada",
+                perimetroSolapado(),
+                GEOMETRIA.createPoint(new Coordinate(-84.0200, 9.6605)),
+                "Tarrazú",
+                "San José"));
+    eliminada.eliminar();
+    fincaRepository.saveAndFlush(eliminada);
+    entityManager.clear();
+
+    assertThat(fincaRepository.buscarSuperpuesta(activa.getPerimetro(), activa.getId())).isEmpty();
+  }
 }

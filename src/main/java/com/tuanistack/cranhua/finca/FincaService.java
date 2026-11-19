@@ -3,6 +3,7 @@ package com.tuanistack.cranhua.finca;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import com.tuanistack.cranhua.finca.dto.ActualizarFincaRequest;
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.locationtech.jts.geom.Polygon;
 import org.springframework.http.HttpStatus;
@@ -44,17 +46,8 @@ public class FincaService {
             .filter(cuenta -> !cuenta.isEliminada())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
-    Polygon perimetro = validarPerimetro(request);
-    fincaRepository
-        .buscarSuperpuesta(perimetro)
-        .ifPresent(otra -> {
-          throw new FincaSuperpuestaException(
-              new ConflictoFinca(
-                  otra.getId(),
-                  otra.getNombre(),
-                  FincaResponse.duenos(otra),
-                  GeometriaUtil.puntos(otra.getPerimetro())));
-        });
+    Polygon perimetro = validarPerimetro(request.perimetro());
+    asegurarSinSuperposicion(perimetro, null);
 
     Finca finca =
         new Finca(
@@ -124,6 +117,37 @@ public class FincaService {
   }
 
   @Transactional
+  public FincaResponse actualizar(UUID fincaId, ActualizarFincaRequest request, UUID cuentaId) {
+    Finca finca = fincaAdministrable(fincaId, cuentaId);
+
+    Optional.ofNullable(request.nombre()).ifPresent(finca::setNombre);
+    Optional.ofNullable(request.descripcion()).ifPresent(finca::setDescripcion);
+    Optional.ofNullable(request.zonaCafetalera()).ifPresent(finca::setZonaCafetalera);
+    Optional.ofNullable(request.ubicacion())
+        .ifPresent(punto -> finca.setUbicacion(GeometriaUtil.punto(punto)));
+    Optional.ofNullable(request.canton()).ifPresent(finca::setCanton);
+    Optional.ofNullable(request.provincia()).ifPresent(finca::setProvincia);
+    Optional.ofNullable(request.perimetro())
+        .ifPresent(puntos -> {
+          Polygon perimetro = validarPerimetro(puntos);
+          asegurarSinSuperposicion(perimetro, finca.getId());
+          finca.setPerimetro(perimetro);
+        });
+
+    Finca guardada = fincaRepository.saveAndFlush(finca);
+    return FincaResponse.de(guardada, fincaRepository.areaHectareas(guardada.getId()));
+  }
+
+  @Transactional
+  public void eliminar(UUID fincaId, UUID cuentaId) {
+    Finca finca = fincaAdministrable(fincaId, cuentaId);
+    finca.getDuenos().removeIf(cuenta -> cuenta.getId().equals(cuentaId));
+    if (finca.getDuenos().isEmpty()) {
+      finca.eliminar();
+    }
+  }
+
+  @Transactional
   public FincaResponse agregarDueno(UUID fincaId, String correo, UUID cuentaId) {
     Finca finca = fincaAdministrable(fincaId, cuentaId);
     Cuenta nuevo =
@@ -164,17 +188,29 @@ public class FincaService {
     Finca finca = fincaExistente(fincaId);
     if (!finca.esDueno(cuentaId)) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede administrar sus dueños.");
+          HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede editarla o administrarla.");
     }
     return finca;
   }
 
-  private static Polygon validarPerimetro(RegistrarFincaRequest request) {
-    // Si viene cerrado, el punto repetido no cuenta como otro punto
-    if (new HashSet<Coordenada>(request.perimetro()).size() < 3) {
+  private void asegurarSinSuperposicion(Polygon perimetro, UUID excluirId) {
+    fincaRepository
+        .buscarSuperpuesta(perimetro, excluirId)
+        .ifPresent(otra -> {
+          throw new FincaSuperpuestaException(
+              new ConflictoFinca(
+                  otra.getId(),
+                  otra.getNombre(),
+                  FincaResponse.duenos(otra),
+                  GeometriaUtil.puntos(otra.getPerimetro())));
+        });
+  }
+
+  private static Polygon validarPerimetro(List<Coordenada> puntos) {
+    if (new HashSet<>(puntos).size() < 3) {
       throw new PerimetroInvalidoException("El perímetro necesita al menos 3 puntos.");
     }
-    Polygon perimetro = GeometriaUtil.poligono(request.perimetro());
+    Polygon perimetro = GeometriaUtil.poligono(puntos);
     if (!perimetro.isValid()) {
       throw new PerimetroInvalidoException("El perímetro tiene líneas que se cruzan.");
     }

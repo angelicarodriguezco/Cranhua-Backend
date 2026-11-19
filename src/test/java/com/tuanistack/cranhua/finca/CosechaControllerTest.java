@@ -1,10 +1,15 @@
 package com.tuanistack.cranhua.finca;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuanistack.cranhua.BasePostgis;
 import com.tuanistack.cranhua.auth.CookieSesion;
 import com.tuanistack.cranhua.cuenta.Cuenta;
@@ -13,7 +18,9 @@ import com.tuanistack.cranhua.cuenta.Rol;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -23,8 +30,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -33,6 +42,8 @@ import org.springframework.test.web.servlet.MockMvc;
 class CosechaControllerTest {
 
   @Autowired private MockMvc mockMvc;
+
+  @Autowired private ObjectMapper objectMapper;
 
   @Autowired private CookieSesion cookieSesion;
 
@@ -148,6 +159,197 @@ class CosechaControllerTest {
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.mensaje").value("No encontramos esa cosecha."));
     }
+  }
+
+  private Map<String, Object> nuevaCosecha() {
+    Map<String, Object> cosecha = new LinkedHashMap<>();
+    cosecha.put("fincaId", finca.getId());
+    cosecha.put("variedad", "Geisha");
+    cosecha.put("alturaMsnm", 1650);
+    cosecha.put("fechaInicio", "2026-01-10");
+    cosecha.put("fechaFin", "2026-03-15");
+    cosecha.put(
+        "procesos",
+        List.of(
+            Map.of("proceso", "Lavado", "porcentaje", 70),
+            Map.of("proceso", "Natural", "porcentaje", 30)));
+    cosecha.put("cantidadCosechadaKg", 1000);
+    cosecha.put("pesoTrasBeneficiadoKg", 800);
+    cosecha.put("pesoTrasSeleccionKg", 720);
+    cosecha.put("caracolilloKg", 40);
+    cosecha.put("notasSabor", "Jazmín y durazno");
+    cosecha.put("puntajeSca", 88.25);
+    cosecha.put("precioKg", 12.5);
+    return cosecha;
+  }
+
+  private ResultActions registrar(Cuenta cuenta, Map<String, Object> cosecha) throws Exception {
+    return mockMvc.perform(
+        post("/api/cosechas")
+            .cookie(sesion(cuenta))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(cosecha)));
+  }
+
+  @Test
+  void cafetaleroRegistraUnaCosechaConMermas() throws Exception {
+    String respuesta =
+        registrar(andres, nuevaCosecha())
+            .andExpect(status().isCreated())
+            .andExpect(header().string("Location", startsWith("/api/cosechas/")))
+            .andExpect(jsonPath("$.fincaId").value(finca.getId().toString()))
+            .andExpect(jsonPath("$.fincaNombre").value("Finca El Tucán"))
+            .andExpect(jsonPath("$.variedad").value("Geisha"))
+            .andExpect(jsonPath("$.procesos[0].proceso").value("Lavado"))
+            .andExpect(jsonPath("$.procesos[1].porcentaje").value(30))
+            .andExpect(jsonPath("$.mermaBeneficiadoPorcentaje").value(20.0))
+            .andExpect(jsonPath("$.mermaSeleccionPorcentaje").value(10.0))
+            .andExpect(jsonPath("$.caracolilloKg").value(40.0))
+            .andExpect(jsonPath("$.puntajeSca").value(88.25))
+            .andExpect(jsonPath("$.kgDisponibles").value(720.0))
+            .andExpect(jsonPath("$.estado").value("DISPONIBLE"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    UUID id = UUID.fromString(objectMapper.readTree(respuesta).get("id").asText());
+    assertThat(cosechaRepository.findById(id)).isPresent();
+  }
+
+  @Test
+  void sinPesosPosterioresQuedaEnBeneficiado() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.remove("pesoTrasBeneficiadoKg");
+    cosecha.remove("pesoTrasSeleccionKg");
+    cosecha.remove("caracolilloKg");
+
+    registrar(andres, cosecha)
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.estado").value("EN_BENEFICIADO"))
+        .andExpect(jsonPath("$.kgDisponibles").value(nullValue()))
+        .andExpect(jsonPath("$.mermaBeneficiadoPorcentaje").value(nullValue()))
+        .andExpect(jsonPath("$.mermaSeleccionPorcentaje").value(nullValue()));
+  }
+
+  @Test
+  void porcentajesQueNoSuman100OProcesoRepetidoDa400() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.put(
+        "procesos",
+        List.of(
+            Map.of("proceso", "Lavado", "porcentaje", 60),
+            Map.of("proceso", "Natural", "porcentaje", 30)));
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.mensaje").value("Revisá los datos ingresados."))
+        .andExpect(
+            jsonPath("$.errores.procesos")
+                .value("Los porcentajes de los procesos tienen que sumar 100."));
+
+    cosecha.put(
+        "procesos",
+        List.of(
+            Map.of("proceso", "Lavado", "porcentaje", 50),
+            Map.of("proceso", "Lavado", "porcentaje", 50)));
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.procesos").value("No repitás un proceso."));
+    assertThat(cosechaRepository.count()).isZero();
+  }
+
+  @Test
+  void pesosMayoresAlPasoAnteriorDan400EnSuCampo() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.put("pesoTrasBeneficiadoKg", 1000.01);
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.pesoTrasBeneficiadoKg").exists())
+        .andExpect(jsonPath("$.errores.pesoTrasSeleccionKg").doesNotExist());
+
+    cosecha = nuevaCosecha();
+    cosecha.put("pesoTrasSeleccionKg", 801);
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.pesoTrasSeleccionKg").exists())
+        .andExpect(jsonPath("$.errores.pesoTrasBeneficiadoKg").doesNotExist());
+
+    cosecha = nuevaCosecha();
+    cosecha.put("caracolilloKg", 721);
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.caracolilloKg").exists())
+        .andExpect(jsonPath("$.errores.pesoTrasSeleccionKg").doesNotExist());
+    assertThat(cosechaRepository.count()).isZero();
+  }
+
+  @Test
+  void precioCeroOAusenteDa400() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.put("precioKg", 0);
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.precioKg").value("El precio por kg tiene que ser mayor a 0."));
+
+    cosecha.remove("precioKg");
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.precioKg").value("Ingresá el precio por kg."));
+    assertThat(cosechaRepository.count()).isZero();
+  }
+
+  @Test
+  void fechaFinAntesDelInicioDa400() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.put("fechaFin", "2026-01-09");
+
+    registrar(andres, cosecha)
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.fechaFin")
+                .value("La fecha de fin no puede ser antes de la de inicio."));
+  }
+
+  @Test
+  void registrarEnFincaAjenaDa403() throws Exception {
+    Cuenta lucia = cuenta("Lucía Mora", "lucia@ejemplo.cr", Rol.CAFETALERO);
+
+    registrar(lucia, nuevaCosecha())
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede registrar cosechas en ella."));
+    assertThat(cosechaRepository.count()).isZero();
+  }
+
+  @Test
+  void registrarEnFincaEliminadaOInexistenteDa404() throws Exception {
+    Map<String, Object> cosecha = nuevaCosecha();
+    cosecha.put("fincaId", UUID.randomUUID());
+    registrar(andres, cosecha)
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+
+    finca.eliminar();
+    fincaRepository.saveAndFlush(finca);
+    registrar(andres, nuevaCosecha())
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.mensaje").value("No encontramos esa finca."));
+    assertThat(cosechaRepository.count()).isZero();
+  }
+
+  @Test
+  void registrarPideSesionYRolCafetalero() throws Exception {
+    Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+
+    mockMvc
+        .perform(
+            post("/api/cosechas")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(nuevaCosecha())))
+        .andExpect(status().isUnauthorized());
+    registrar(tostador, nuevaCosecha()).andExpect(status().isForbidden());
+    assertThat(cosechaRepository.count()).isZero();
   }
 
   @Test
