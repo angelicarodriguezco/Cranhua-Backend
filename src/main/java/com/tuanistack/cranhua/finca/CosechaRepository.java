@@ -17,6 +17,16 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
 
   @Query(
       """
+      select c from Cosecha c join fetch c.finca f left join fetch c.procesos
+      where c.estado = :estado and c.kgDisponibles > 0 and f.eliminada = false
+        and not exists (select d from f.duenos d where d.id = :cuentaId)
+      order by c.creadaEn desc, c.id
+      """)
+  List<Cosecha> disponiblesParaOtros(
+      @Param("cuentaId") UUID cuentaId, @Param("estado") EstadoCosecha estado);
+
+  @Query(
+      """
       select c.finca.id, count(c), sum(c.kgDisponibles) from Cosecha c
       where c.finca.id in :fincaIds and c.estado = :estado and c.kgDisponibles > 0
       group by c.finca.id
