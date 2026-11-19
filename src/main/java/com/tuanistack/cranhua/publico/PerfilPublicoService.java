@@ -11,7 +11,6 @@ import com.tuanistack.cranhua.finca.EstadoCosecha;
 import com.tuanistack.cranhua.finca.Finca;
 import com.tuanistack.cranhua.finca.FincaRepository;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
-import com.tuanistack.cranhua.finca.Proceso;
 import com.tuanistack.cranhua.finca.ProcesoReparto;
 import com.tuanistack.cranhua.publico.dto.EnlacePerfil;
 import com.tuanistack.cranhua.publico.dto.PerfilCafeteriaPublicoResponse;
@@ -20,7 +19,6 @@ import com.tuanistack.cranhua.publico.dto.PerfilFincaPublicoResponse.CosechaActi
 import com.tuanistack.cranhua.publico.dto.PerfilTostadorPublicoResponse;
 import com.tuanistack.cranhua.tueste.NegocioTueste;
 import com.tuanistack.cranhua.tueste.NegocioTuesteRepository;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -139,16 +137,11 @@ public class PerfilPublicoService {
   }
 
   private static CosechaActiva cosechaActiva(Cosecha cosecha) {
-    Proceso principal =
-        cosecha.getProcesos().stream()
-            .max(Comparator.comparing(ProcesoReparto::getPorcentaje))
-            .map(ProcesoReparto::getProceso)
-            .orElse(null);
     return new CosechaActiva(
         cosecha.getId(),
         cosecha.getCodigoLote(),
         cosecha.getVariedad(),
-        principal,
+        cosecha.getProcesoPrincipal(),
         cosecha.getAlturaMsnm(),
         cosecha.getKgDisponibles());
   }
