@@ -9,6 +9,8 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
 
   Optional<Lote> findByCodigo(String codigo);
 
+  long countBySolicitudTostadorId(UUID tostadorId);
+
   @Query(value = "select nextval('lote_codigo_seq')", nativeQuery = true)
   long siguienteNumeroCodigo();
 }

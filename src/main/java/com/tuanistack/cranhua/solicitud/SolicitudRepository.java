@@ -3,6 +3,9 @@ package com.tuanistack.cranhua.solicitud;
 import com.tuanistack.cranhua.solicitud.dto.SolicitudEnviadaResponse;
 import com.tuanistack.cranhua.solicitud.dto.SolicitudRecibidaResponse;
 import jakarta.persistence.LockModeType;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,7 +20,22 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, UUID> {
 
   List<Solicitud> findByTostadorIdOrderBySolicitadaEnDesc(UUID tostadorId);
 
-  // Bloquea la fila para que dos respuestas a la misma solicitud no se crucen
+  long countByTostadorIdAndEstadoIn(UUID tostadorId, Collection<EstadoSolicitud> estados);
+
+  @Query(
+      """
+      select coalesce(sum(s.cantidadKg), 0)
+      from Solicitud s
+      where s.tostador.id = :tostadorId
+        and s.estado = com.tuanistack.cranhua.solicitud.EstadoSolicitud.APROBADA
+        and s.respondidaEn >= :desde
+        and s.respondidaEn < :hasta
+      """)
+  BigDecimal kgAprobadosEntre(
+      @Param("tostadorId") UUID tostadorId,
+      @Param("desde") Instant desde,
+      @Param("hasta") Instant hasta);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select s from Solicitud s where s.id = :id")
   Optional<Solicitud> findParaResponder(@Param("id") UUID id);
