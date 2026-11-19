@@ -1,9 +1,12 @@
 package com.tuanistack.cranhua.solicitud;
 
+import com.tuanistack.cranhua.cuenta.Cuenta;
+import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.finca.Cosecha;
 import com.tuanistack.cranhua.finca.CosechaRepository;
 import com.tuanistack.cranhua.lote.Lote;
 import com.tuanistack.cranhua.lote.LoteRepository;
+import com.tuanistack.cranhua.solicitud.dto.CrearSolicitudRequest;
 import com.tuanistack.cranhua.solicitud.dto.SolicitudResponse;
 import java.math.BigDecimal;
 import java.time.Year;
@@ -22,14 +25,50 @@ public class SolicitudService {
   private final SolicitudRepository solicitudRepository;
   private final CosechaRepository cosechaRepository;
   private final LoteRepository loteRepository;
+  private final CuentaRepository cuentaRepository;
 
   public SolicitudService(
       SolicitudRepository solicitudRepository,
       CosechaRepository cosechaRepository,
-      LoteRepository loteRepository) {
+      LoteRepository loteRepository,
+      CuentaRepository cuentaRepository) {
     this.solicitudRepository = solicitudRepository;
     this.cosechaRepository = cosechaRepository;
     this.loteRepository = loteRepository;
+    this.cuentaRepository = cuentaRepository;
+  }
+
+  @Transactional
+  public SolicitudResponse crear(CrearSolicitudRequest request, UUID cuentaId) {
+    Cosecha cosecha =
+        cosechaRepository
+            .findById(request.cosechaId())
+            .filter(c -> !c.getFinca().isEliminada())
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
+
+    if (cosecha.getFinca().esDueno(cuentaId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "No podés solicitar tu propia cosecha.");
+    }
+
+    BigDecimal disponibles =
+        cosecha.getKgDisponibles() == null ? BigDecimal.ZERO : cosecha.getKgDisponibles();
+    if (request.cantidadKg().compareTo(disponibles) > 0) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST,
+          "No hay suficiente café disponible: pedís %s kg y quedan %s kg."
+              .formatted(request.cantidadKg().toPlainString(), disponibles.toPlainString()));
+    }
+
+    Cuenta tostador =
+        cuentaRepository
+            .findById(cuentaId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+
+    Solicitud solicitud =
+        solicitudRepository.saveAndFlush(new Solicitud(cosecha, tostador, request.cantidadKg()));
+    return SolicitudResponse.de(solicitud, null);
   }
 
   @Transactional
