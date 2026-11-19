@@ -65,7 +65,7 @@ class CosechaRepositoryTest {
 
     assertThat(leida.getVariedad()).isEqualTo("Caturra");
     assertThat(leida.getPrecioKg()).isEqualByComparingTo("9.75");
-    assertThat(leida.getEstado()).isEqualTo(EstadoCosecha.EN_BENEFICIADO);
+    assertThat(leida.getEstado()).isEqualTo(EstadoCosecha.BORRADOR);
     assertThat(leida.getProcesos())
         .extracting(ProcesoReparto::getProceso, ProcesoReparto::getPorcentaje)
         .containsExactlyInAnyOrder(tuple(Proceso.RED_HONEY, 60), tuple(Proceso.ANAEROBICO, 40));
@@ -150,7 +150,7 @@ class CosechaRepositoryTest {
     assertThat(leida.getPesoTrasSeleccionKg()).isEqualByComparingTo("950.00");
     assertThat(leida.getCaracolilloKg()).isEqualByComparingTo("35.50");
     assertThat(leida.getKgDisponibles()).isEqualByComparingTo("850.00");
-    assertThat(leida.getEstado()).isEqualTo(EstadoCosecha.DISPONIBLE);
+    assertThat(leida.getEstado()).isEqualTo(EstadoCosecha.BORRADOR);
   }
 
   @Test

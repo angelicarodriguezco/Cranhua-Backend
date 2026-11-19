@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.finca.dto.ActualizarEstadoCosechaRequest;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
 import com.tuanistack.cranhua.finca.dto.RegistrarCosechaRequest;
 import com.tuanistack.cranhua.finca.dto.RegistrarCosechaRequest.RepartoRequest;
@@ -63,16 +64,47 @@ public class CosechaService {
 
   @Transactional(readOnly = true)
   public CosechaResponse obtener(UUID cosechaId, UUID cuentaId) {
-    Cosecha cosecha =
-        cosechaRepository
-            .findById(cosechaId)
-            .filter(c -> !c.getFinca().isEliminada())
-            .orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
+    Cosecha cosecha = cosechaVisible(cosechaId);
     if (!cosecha.getFinca().esDueno(cuentaId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Esta cosecha no es tuya.");
     }
     return CosechaResponse.conFinca(cosecha);
+  }
+
+  @Transactional
+  public CosechaResponse actualizarEstado(
+      UUID cosechaId, ActualizarEstadoCosechaRequest request, UUID cuentaId) {
+    Cosecha cosecha = cosechaVisible(cosechaId);
+    if (!cosecha.getFinca().esDueno(cuentaId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Solo un dueño de la finca puede publicar o retirar esta cosecha.");
+    }
+
+    EstadoCosecha nuevo = request.estado();
+    if (nuevo != EstadoCosecha.PUBLICADA && nuevo != EstadoCosecha.BORRADOR) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Solo se puede publicar o retirar una cosecha.");
+    }
+
+    try {
+      if (nuevo == EstadoCosecha.PUBLICADA) {
+        cosecha.publicar();
+      } else {
+        cosecha.retirar();
+      }
+    } catch (IllegalStateException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    return CosechaResponse.conFinca(cosecha);
+  }
+
+  private Cosecha cosechaVisible(UUID cosechaId) {
+    return cosechaRepository
+        .findById(cosechaId)
+        .filter(c -> !c.getFinca().isEliminada())
+        .orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
   }
 
   private static void validar(RegistrarCosechaRequest request) {

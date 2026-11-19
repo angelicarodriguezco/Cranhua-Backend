@@ -74,7 +74,7 @@ public class Cosecha {
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
-  private EstadoCosecha estado = EstadoCosecha.EN_BENEFICIADO;
+  private EstadoCosecha estado = EstadoCosecha.BORRADOR;
 
   @Column(name = "codigo_lote", unique = true, length = 20)
   private String codigoLote;
@@ -128,11 +128,23 @@ public class Cosecha {
     this.procesos.addAll(procesos);
   }
 
-  // Al terminar la selección, lo que queda es lo que se puede vender
   public void registrarPesoTrasSeleccion(BigDecimal kg) {
     pesoTrasSeleccionKg = kg;
     kgDisponibles = kg;
-    estado = EstadoCosecha.DISPONIBLE;
+  }
+
+  public void publicar() {
+    if (estado != EstadoCosecha.BORRADOR) {
+      throw new IllegalStateException("Solo se puede publicar una cosecha en borrador.");
+    }
+    estado = EstadoCosecha.PUBLICADA;
+  }
+
+  public void retirar() {
+    if (estado != EstadoCosecha.PUBLICADA) {
+      throw new IllegalStateException("Solo se puede retirar una cosecha publicada.");
+    }
+    estado = EstadoCosecha.BORRADOR;
   }
 
   public void descontarDisponible(BigDecimal kg) {
@@ -143,6 +155,9 @@ public class Cosecha {
       throw new IllegalStateException("No hay suficientes kg disponibles.");
     }
     kgDisponibles = kgDisponibles.subtract(kg);
+    if (kgDisponibles.signum() == 0) {
+      estado = EstadoCosecha.AGOTADA;
+    }
   }
 
   public UUID getId() {

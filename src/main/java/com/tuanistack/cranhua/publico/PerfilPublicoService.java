@@ -133,7 +133,7 @@ public class PerfilPublicoService {
   }
 
   private static boolean estaActiva(Cosecha cosecha) {
-    return cosecha.getEstado() == EstadoCosecha.DISPONIBLE
+    return cosecha.getEstado() == EstadoCosecha.PUBLICADA
         && cosecha.getKgDisponibles() != null
         && cosecha.getKgDisponibles().signum() > 0;
   }

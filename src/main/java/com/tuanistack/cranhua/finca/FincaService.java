@@ -78,7 +78,7 @@ public class FincaService {
         .forEach(fila -> areas.put((UUID) fila[0], (BigDecimal) fila[1]));
     Map<UUID, Object[]> resumenes = new HashMap<>();
     cosechaRepository
-        .resumenDisponibles(ids, EstadoCosecha.DISPONIBLE)
+        .resumenDisponibles(ids, EstadoCosecha.PUBLICADA)
         .forEach(fila -> resumenes.put((UUID) fila[0], fila));
 
     return fincas.stream()
