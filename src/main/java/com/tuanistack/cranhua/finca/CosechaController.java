@@ -48,7 +48,6 @@ public class CosechaController {
       @PathVariable UUID id,
       @Valid @RequestBody ActualizarEstadoCosechaRequest request,
       Authentication authentication) {
-    return cosechaService.actualizarEstado(
-        id, request, UUID.fromString(authentication.getName()));
+    return cosechaService.actualizarEstado(id, request, UUID.fromString(authentication.getName()));
   }
 }

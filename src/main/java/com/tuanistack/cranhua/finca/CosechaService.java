@@ -103,8 +103,8 @@ public class CosechaService {
     return cosechaRepository
         .findById(cosechaId)
         .filter(c -> !c.getFinca().isEliminada())
-        .orElseThrow(() ->
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
   }
 
   private static void validar(RegistrarCosechaRequest request) {
