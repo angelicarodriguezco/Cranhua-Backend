@@ -42,25 +42,66 @@ class CosechaTest {
   }
 
   @Test
-  void registrarPesoTrasSeleccionInicializaDisponibles() {
+  void registrarPesoTrasSeleccionInicializaDisponiblesSinPublicar() {
     Cosecha cosecha = cosechaLavada();
 
     cosecha.registrarPesoTrasSeleccion(new BigDecimal("640.00"));
 
     assertThat(cosecha.getPesoTrasSeleccionKg()).isEqualByComparingTo("640.00");
     assertThat(cosecha.getKgDisponibles()).isEqualByComparingTo("640.00");
-    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.DISPONIBLE);
+    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.BORRADOR);
   }
 
   @Test
-  void descontarDisponibleBajaLosKg() {
+  void descontarDisponibleBajaLosKgYAgotaAlLlegarACero() {
     Cosecha cosecha = cosechaLavada();
     cosecha.registrarPesoTrasSeleccion(new BigDecimal("640.00"));
+    cosecha.publicar();
 
     cosecha.descontarDisponible(new BigDecimal("140.00"));
+    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.PUBLICADA);
+
     cosecha.descontarDisponible(new BigDecimal("500.00"));
 
     assertThat(cosecha.getKgDisponibles()).isEqualByComparingTo("0");
+    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.AGOTADA);
+  }
+
+  @Test
+  void publicarPasaDeBorradorAPublicada() {
+    Cosecha cosecha = cosechaLavada();
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("100.00"));
+
+    cosecha.publicar();
+
+    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.PUBLICADA);
+  }
+
+  @Test
+  void retirarPasaDePublicadaABorrador() {
+    Cosecha cosecha = cosechaLavada();
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("100.00"));
+    cosecha.publicar();
+
+    cosecha.retirar();
+
+    assertThat(cosecha.getEstado()).isEqualTo(EstadoCosecha.BORRADOR);
+  }
+
+  @Test
+  void publicarSiNoEsBorradorFalla() {
+    Cosecha cosecha = cosechaLavada();
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("100.00"));
+    cosecha.publicar();
+
+    assertThatThrownBy(cosecha::publicar).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void retirarSiNoEsPublicadaFalla() {
+    Cosecha cosecha = cosechaLavada();
+
+    assertThatThrownBy(cosecha::retirar).isInstanceOf(IllegalStateException.class);
   }
 
   @Test

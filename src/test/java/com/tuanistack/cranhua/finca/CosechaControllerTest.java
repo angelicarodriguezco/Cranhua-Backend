@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -116,7 +117,7 @@ class CosechaControllerTest {
         .andExpect(jsonPath("$.notasSabor").value("Chocolate y mandarina"))
         .andExpect(jsonPath("$.puntajeSca").value(86.5))
         .andExpect(jsonPath("$.kgDisponibles").value(800.0))
-        .andExpect(jsonPath("$.estado").value("DISPONIBLE"));
+        .andExpect(jsonPath("$.estado").value("BORRADOR"));
   }
 
   @Test
@@ -126,7 +127,7 @@ class CosechaControllerTest {
     mockMvc
         .perform(get("/api/cosechas/{id}", cosecha.getId()).cookie(sesion(andres)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.estado").value("EN_BENEFICIADO"))
+        .andExpect(jsonPath("$.estado").value("BORRADOR"))
         .andExpect(jsonPath("$.pesoTrasBeneficiadoKg").value(nullValue()))
         .andExpect(jsonPath("$.pesoTrasSeleccionKg").value(nullValue()))
         .andExpect(jsonPath("$.caracolilloKg").value(nullValue()))
@@ -191,6 +192,15 @@ class CosechaControllerTest {
             .content(objectMapper.writeValueAsString(cosecha)));
   }
 
+  private ResultActions actualizarEstado(Cuenta cuenta, UUID cosechaId, EstadoCosecha estado)
+      throws Exception {
+    return mockMvc.perform(
+        patch("/api/cosechas/{id}/estado", cosechaId)
+            .cookie(sesion(cuenta))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(Map.of("estado", estado.name()))));
+  }
+
   @Test
   void cafetaleroRegistraUnaCosechaConMermas() throws Exception {
     String respuesta =
@@ -207,7 +217,7 @@ class CosechaControllerTest {
             .andExpect(jsonPath("$.caracolilloKg").value(40.0))
             .andExpect(jsonPath("$.puntajeSca").value(88.25))
             .andExpect(jsonPath("$.kgDisponibles").value(720.0))
-            .andExpect(jsonPath("$.estado").value("DISPONIBLE"))
+            .andExpect(jsonPath("$.estado").value("BORRADOR"))
             .andReturn()
             .getResponse()
             .getContentAsString();
@@ -217,7 +227,7 @@ class CosechaControllerTest {
   }
 
   @Test
-  void sinPesosPosterioresQuedaEnBeneficiado() throws Exception {
+  void sinPesosPosterioresQuedaEnBorrador() throws Exception {
     Map<String, Object> cosecha = nuevaCosecha();
     cosecha.remove("pesoTrasBeneficiadoKg");
     cosecha.remove("pesoTrasSeleccionKg");
@@ -225,7 +235,7 @@ class CosechaControllerTest {
 
     registrar(andres, cosecha)
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.estado").value("EN_BENEFICIADO"))
+        .andExpect(jsonPath("$.estado").value("BORRADOR"))
         .andExpect(jsonPath("$.kgDisponibles").value(nullValue()))
         .andExpect(jsonPath("$.mermaBeneficiadoPorcentaje").value(nullValue()))
         .andExpect(jsonPath("$.mermaSeleccionPorcentaje").value(nullValue()));
@@ -363,5 +373,100 @@ class CosechaControllerTest {
     mockMvc
         .perform(get("/api/cosechas/{id}", cosecha.getId()).cookie(sesion(tostador)))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void elDuenioPublicaUnaCosechaEnBorrador() throws Exception {
+    Cosecha cosecha = cosecha(finca);
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("800.00"));
+    cosechaRepository.saveAndFlush(cosecha);
+
+    actualizarEstado(andres, cosecha.getId(), EstadoCosecha.PUBLICADA)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(cosecha.getId().toString()))
+        .andExpect(jsonPath("$.fincaId").value(finca.getId().toString()))
+        .andExpect(jsonPath("$.fincaNombre").value("Finca El Tucán"))
+        .andExpect(jsonPath("$.estado").value("PUBLICADA"))
+        .andExpect(jsonPath("$.kgDisponibles").value(800.0));
+
+    assertThat(cosechaRepository.findById(cosecha.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoCosecha.PUBLICADA);
+  }
+
+  @Test
+  void elDuenioRetiraUnaCosechaPublicada() throws Exception {
+    Cosecha cosecha = cosecha(finca);
+    cosecha.registrarPesoTrasSeleccion(new BigDecimal("800.00"));
+    cosecha.publicar();
+    cosechaRepository.saveAndFlush(cosecha);
+
+    actualizarEstado(andres, cosecha.getId(), EstadoCosecha.BORRADOR)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.estado").value("BORRADOR"))
+        .andExpect(jsonPath("$.kgDisponibles").value(800.0));
+
+    assertThat(cosechaRepository.findById(cosecha.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoCosecha.BORRADOR);
+  }
+
+  @Test
+  void publicarORetirarEnFincaAjenaDa403() throws Exception {
+    Cuenta lucia = cuenta("Lucía Mora", "lucia@ejemplo.cr", Rol.CAFETALERO);
+    Cosecha cosecha = cosecha(finca);
+
+    actualizarEstado(lucia, cosecha.getId(), EstadoCosecha.PUBLICADA)
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.mensaje")
+                .value("Solo un dueño de la finca puede publicar o retirar esta cosecha."));
+  }
+
+  @Test
+  void publicarPideSesionYRolCafetalero() throws Exception {
+    Cosecha cosecha = cosecha(finca);
+    Cuenta tostador = cuenta("Mario Brenes", "mario@ejemplo.cr", Rol.TOSTADOR);
+
+    mockMvc
+        .perform(
+            patch("/api/cosechas/{id}/estado", cosecha.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("estado", "PUBLICADA"))))
+        .andExpect(status().isUnauthorized());
+    actualizarEstado(tostador, cosecha.getId(), EstadoCosecha.PUBLICADA)
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void transicionInvalidaOAgotadaPorApiDa400() throws Exception {
+    Cosecha publicada = cosecha(finca);
+    publicada.registrarPesoTrasSeleccion(new BigDecimal("100.00"));
+    publicada.publicar();
+    cosechaRepository.saveAndFlush(publicada);
+
+    actualizarEstado(andres, publicada.getId(), EstadoCosecha.PUBLICADA)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.mensaje").value("Solo se puede publicar una cosecha en borrador."));
+
+    Cosecha borrador = cosecha(finca);
+    actualizarEstado(andres, borrador.getId(), EstadoCosecha.BORRADOR)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.mensaje").value("Solo se puede retirar una cosecha publicada."));
+
+    actualizarEstado(andres, borrador.getId(), EstadoCosecha.AGOTADA)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.mensaje").value("Solo se puede publicar o retirar una cosecha."));
+  }
+
+  @Test
+  void publicarCosechaInexistenteODeFincaEliminadaDa404() throws Exception {
+    Cosecha cosecha = cosecha(finca);
+    finca.eliminar();
+    fincaRepository.saveAndFlush(finca);
+
+    for (UUID id : List.of(UUID.randomUUID(), cosecha.getId())) {
+      actualizarEstado(andres, id, EstadoCosecha.PUBLICADA)
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.mensaje").value("No encontramos esa cosecha."));
+    }
   }
 }

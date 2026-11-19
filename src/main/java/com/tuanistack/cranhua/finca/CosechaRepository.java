@@ -13,7 +13,6 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
 
   List<Cosecha> findByFincaIdOrderByFechaInicioDescIdAsc(UUID fincaId);
 
-  // Cada fila es [fincaId, cosechas activas, kg disponibles]; activa es DISPONIBLE con kg > 0
   @Query(
       """
       select c.finca.id, count(c), sum(c.kgDisponibles) from Cosecha c

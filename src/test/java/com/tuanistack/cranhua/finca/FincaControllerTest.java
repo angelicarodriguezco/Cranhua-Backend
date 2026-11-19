@@ -765,7 +765,6 @@ class FincaControllerTest {
 
   @Test
   void misFincasDevuelveSoloLasDelUsuarioSinEliminadas() throws Exception {
-    // Se registran fuera del orden por nombre para comprobar que no salen por fecha
     registrar(andres, finca("Finca La Catalina", CUADRADO)).andExpect(status().isCreated());
     registrar(andres, finca("Finca El Roble", COLINDANTE)).andExpect(status().isCreated());
     registrar(andres, finca("Finca Alta Vista", LEJANO)).andExpect(status().isCreated());
@@ -848,7 +847,6 @@ class FincaControllerTest {
     }
   }
 
-  // Sin kgDisponibles queda en beneficiado; con kgDisponibles queda DISPONIBLE
   private Cosecha cosecha(Finca finca, String variedad, LocalDate inicio, String kgDisponibles) {
     Cosecha cosecha =
         new Cosecha(
@@ -864,6 +862,7 @@ class FincaControllerTest {
                 new ProcesoReparto(Proceso.RED_HONEY, 60)));
     if (kgDisponibles != null) {
       cosecha.registrarPesoTrasSeleccion(new BigDecimal(kgDisponibles));
+      cosecha.publicar();
     }
     return cosechaRepository.saveAndFlush(cosecha);
   }
@@ -906,12 +905,12 @@ class FincaControllerTest {
         .andExpect(jsonPath("$.cosechasActivas").doesNotExist())
         .andExpect(jsonPath("$.cosechas[*].variedad", contains("Geisha", "Caturra")))
         .andExpect(jsonPath("$.cosechas[0].procesoPrincipal").value("Red honey"))
-        .andExpect(jsonPath("$.cosechas[0].estado").value("EN_BENEFICIADO"))
+        .andExpect(jsonPath("$.cosechas[0].estado").value("BORRADOR"))
         .andExpect(jsonPath("$.cosechas[0].kgDisponibles").value(nullValue()))
         .andExpect(jsonPath("$.cosechas[0].codigoLote").value(nullValue()))
         .andExpect(jsonPath("$.cosechas[1].id").value(disponible.getId().toString()))
         .andExpect(jsonPath("$.cosechas[1].codigoLote").value("CRH-2026-0001"))
-        .andExpect(jsonPath("$.cosechas[1].estado").value("DISPONIBLE"))
+        .andExpect(jsonPath("$.cosechas[1].estado").value("PUBLICADA"))
         .andExpect(jsonPath("$.cosechas[1].kgDisponibles").value(300.0))
         .andExpect(jsonPath("$.cosechas[1].precioKg").value(9.75));
   }
@@ -950,7 +949,7 @@ class FincaControllerTest {
         .andExpect(jsonPath("$[0].pesoTrasSeleccionKg").value(300.0))
         .andExpect(jsonPath("$[0].precioKg").value(9.75))
         .andExpect(jsonPath("$[0].kgDisponibles").value(300.0))
-        .andExpect(jsonPath("$[0].estado").value("DISPONIBLE"))
+        .andExpect(jsonPath("$[0].estado").value("PUBLICADA"))
         .andExpect(jsonPath("$[0].pesoTrasBeneficiadoKg").value(nullValue()))
         .andExpect(jsonPath("$[0].caracolilloKg").value(nullValue()))
         .andExpect(jsonPath("$[0].notasSabor").value(nullValue()))
