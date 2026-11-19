@@ -2,7 +2,10 @@ package com.tuanistack.cranhua.solicitud;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,6 +24,7 @@ import com.tuanistack.cranhua.lote.Lote;
 import com.tuanistack.cranhua.lote.LoteRepository;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,12 +91,28 @@ class SolicitudControllerTest {
     cuentaRepository.deleteAll();
   }
 
-  private Cuenta cuenta(String nombre, String correo, Rol rol) {
-    return cuentaRepository.saveAndFlush(new Cuenta(nombre, correo, "hash", Set.of(rol)));
+  private Cuenta cuenta(String nombre, String correo, Rol... roles) {
+    return cuentaRepository.saveAndFlush(new Cuenta(nombre, correo, "hash", Set.of(roles)));
   }
 
   private Solicitud solicitud(String kg) {
     return solicitudRepository.saveAndFlush(new Solicitud(cosecha, tostador, new BigDecimal(kg)));
+  }
+
+  private ResultActions crear(Cuenta cuenta, UUID cosechaId, Object cantidadKg) throws Exception {
+    Map<String, Object> body = new HashMap<>();
+    body.put("cosechaId", cosechaId);
+    if (cantidadKg != OMITIR) {
+      body.put("cantidadKg", cantidadKg);
+    }
+    var request =
+        post("/api/solicitudes")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(body));
+    if (cuenta != null) {
+      request.cookie(new Cookie(CookieSesion.NOMBRE, cookieSesion.crear(cuenta).getValue()));
+    }
+    return mockMvc.perform(request);
   }
 
   private ResultActions responder(Cuenta cuenta, UUID solicitudId, EstadoSolicitud estado)
@@ -106,6 +126,75 @@ class SolicitudControllerTest {
 
   private BigDecimal kgDisponibles() {
     return cosechaRepository.findById(cosecha.getId()).orElseThrow().getKgDisponibles();
+  }
+
+  private static final Object OMITIR = new Object();
+
+  @Test
+  void tostadorCreaUnaSolicitud() throws Exception {
+    crear(tostador, cosecha.getId(), "120.50")
+        .andExpect(status().isCreated())
+        .andExpect(header().string("Location", startsWith("/api/solicitudes/")))
+        .andExpect(jsonPath("$.cosechaId").value(cosecha.getId().toString()))
+        .andExpect(jsonPath("$.cantidadKg").value(120.5))
+        .andExpect(jsonPath("$.precioKg").value(9.75))
+        .andExpect(jsonPath("$.totalEstimado").value(1174.88))
+        .andExpect(jsonPath("$.estado").value("PENDIENTE"))
+        .andExpect(jsonPath("$.solicitadaEn").isNotEmpty())
+        .andExpect(jsonPath("$.respondidaEn").doesNotExist())
+        .andExpect(jsonPath("$.codigoLote").doesNotExist());
+
+    List<Solicitud> guardadas = solicitudRepository.findAll();
+    assertThat(guardadas).hasSize(1);
+    assertThat(guardadas.get(0).getTostador().getId()).isEqualTo(tostador.getId());
+    assertThat(guardadas.get(0).getCosecha().getId()).isEqualTo(cosecha.getId());
+    assertThat(kgDisponibles()).isEqualByComparingTo("500.00");
+  }
+
+  @Test
+  void cantidadInvalidaDa400() throws Exception {
+    crear(tostador, cosecha.getId(), "0")
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.cantidadKg").value("La cantidad tiene que ser mayor a 0."));
+    crear(tostador, cosecha.getId(), OMITIR)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.cantidadKg").value("Ingresá la cantidad en kg."));
+
+    assertThat(solicitudRepository.count()).isZero();
+  }
+
+  @Test
+  void cantidadMayorALoDisponibleDa400() throws Exception {
+    crear(tostador, cosecha.getId(), "500.01")
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.mensaje")
+                .value(
+                    "No hay suficiente café disponible: pedís 500.01 kg y quedan 500.00 kg."));
+
+    assertThat(solicitudRepository.count()).isZero();
+    assertThat(kgDisponibles()).isEqualByComparingTo("500.00");
+  }
+
+  @Test
+  void noSePuedeSolicitarLaPropiaCosechaNiSinRolTostador() throws Exception {
+    Cuenta ana = cuenta("Ana Rojas", "ana@ejemplo.cr", Rol.CAFETALERO, Rol.TOSTADOR);
+    Finca finca = cosecha.getFinca();
+    finca.agregarDueno(ana);
+    fincaRepository.saveAndFlush(finca);
+
+    crear(ana, cosecha.getId(), "100.00")
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.mensaje").value("No podés solicitar tu propia cosecha."));
+    crear(andres, cosecha.getId(), "100.00").andExpect(status().isForbidden());
+
+    assertThat(solicitudRepository.count()).isZero();
+  }
+
+  @Test
+  void sinSesionDa401() throws Exception {
+    crear(null, cosecha.getId(), "100.00").andExpect(status().isUnauthorized());
   }
 
   @Test
