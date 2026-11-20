@@ -18,6 +18,7 @@ import com.tuanistack.cranhua.solicitud.SolicitudRepositoryTest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -100,5 +101,23 @@ class TuesteRepositoryTest {
     assertThatThrownBy(() -> tuesteRepository.saveAndFlush(tueste))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("ck_tueste_pesos");
+  }
+
+  @Test
+  void sumaPesoVerdeDelLoteExcluyendoTueste() {
+    Tueste primero =
+        tuesteRepository.saveAndFlush(
+            tueste(NivelTueste.CLARO, "43.00", LocalDate.of(2026, 3, 1)));
+    Tueste segundo =
+        tuesteRepository.saveAndFlush(
+            tueste(NivelTueste.OSCURO, "40.00", LocalDate.of(2026, 3, 8)));
+    entityManager.clear();
+
+    assertThat(tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), primero.getId()))
+        .isEqualByComparingTo("50.00");
+    assertThat(tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), segundo.getId()))
+        .isEqualByComparingTo("50.00");
+    assertThat(tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), UUID.randomUUID()))
+        .isEqualByComparingTo("100.00");
   }
 }
