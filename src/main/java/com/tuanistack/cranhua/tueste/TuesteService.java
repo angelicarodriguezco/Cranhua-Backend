@@ -45,10 +45,8 @@ public class TuesteService {
     Tueste tueste =
         tuesteRepository
             .findById(tuesteId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
     Lote lote = tueste.getLote();
     if (!lote.getSolicitud().getTostador().getId().equals(tostadorId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Este lote no es tuyo.");
@@ -81,9 +79,8 @@ public class TuesteService {
     Lote lote =
         loteRepository
             .findById(loteId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese lote."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese lote."));
     if (!lote.getSolicitud().getTostador().getId().equals(tostadorId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Este lote no es tuyo.");
     }
