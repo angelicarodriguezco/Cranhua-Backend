@@ -3,6 +3,7 @@ package com.tuanistack.cranhua.tueste;
 import com.tuanistack.cranhua.lote.Lote;
 import com.tuanistack.cranhua.lote.LoteRepository;
 import com.tuanistack.cranhua.tueste.dto.ActualizarTuesteRequest;
+import com.tuanistack.cranhua.tueste.dto.RegistrarTuesteRequest;
 import com.tuanistack.cranhua.tueste.dto.TuesteResponse;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -40,6 +41,24 @@ public class TuesteService {
   }
 
   @Transactional
+  public TuesteResponse registrar(RegistrarTuesteRequest request, UUID tostadorId) {
+    Lote lote = loteDelTostador(request.loteId(), tostadorId);
+    validarPesos(lote, null, request.pesoVerdeKg(), request.pesoTostadoKg());
+
+    Tueste tueste =
+        new Tueste(
+            lote,
+            request.nivel(),
+            request.pesoVerdeKg(),
+            request.pesoTostadoKg(),
+            request.fechaTueste());
+    tueste.setNotas(request.notas());
+    lote.activar();
+
+    return TuesteResponse.de(tuesteRepository.saveAndFlush(tueste));
+  }
+
+  @Transactional
   public TuesteResponse actualizar(
       UUID tuesteId, ActualizarTuesteRequest request, UUID tostadorId) {
     Tueste tueste =
@@ -57,7 +76,7 @@ public class TuesteService {
     BigDecimal pesoTostado =
         Optional.ofNullable(request.pesoTostadoKg()).orElse(tueste.getPesoTostadoKg());
 
-    validarPesos(tueste, pesoVerde, pesoTostado);
+    validarPesos(lote, tueste.getId(), pesoVerde, pesoTostado);
 
     BigDecimal kgPedidos = kgPedidosTueste.total(tueste.getId());
     if (pesoTostado.compareTo(kgPedidos) < 0) {
@@ -87,16 +106,17 @@ public class TuesteService {
     return lote;
   }
 
-  private void validarPesos(Tueste tueste, BigDecimal pesoVerde, BigDecimal pesoTostado) {
+  // tuesteId es null cuando el tueste todavía no existe
+  private void validarPesos(
+      Lote lote, UUID tuesteId, BigDecimal pesoVerde, BigDecimal pesoTostado) {
     Map<String, String> errores = new LinkedHashMap<>();
 
     if (pesoTostado.compareTo(pesoVerde) > 0) {
       errores.put("pesoTostadoKg", "El peso tostado no puede ser mayor al peso verde.");
     }
 
-    BigDecimal pesoOtros =
-        tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(tueste.getLote().getId(), tueste.getId());
-    BigDecimal kgPorTostar = tueste.getLote().getSolicitud().getCantidadKg().subtract(pesoOtros);
+    BigDecimal pesoOtros = tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), tuesteId);
+    BigDecimal kgPorTostar = lote.getSolicitud().getCantidadKg().subtract(pesoOtros);
     if (pesoVerde.compareTo(kgPorTostar) > 0) {
       errores.put("pesoVerdeKg", "El peso verde supera los kg disponibles del lote.");
     }
