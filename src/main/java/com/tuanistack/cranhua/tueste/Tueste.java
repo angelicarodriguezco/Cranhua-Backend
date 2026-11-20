@@ -89,16 +89,32 @@ public class Tueste {
     return nivel;
   }
 
+  public void setNivel(NivelTueste nivel) {
+    this.nivel = nivel;
+  }
+
   public BigDecimal getPesoVerdeKg() {
     return pesoVerdeKg;
+  }
+
+  public void setPesoVerdeKg(BigDecimal pesoVerdeKg) {
+    this.pesoVerdeKg = pesoVerdeKg;
   }
 
   public BigDecimal getPesoTostadoKg() {
     return pesoTostadoKg;
   }
 
+  public void setPesoTostadoKg(BigDecimal pesoTostadoKg) {
+    this.pesoTostadoKg = pesoTostadoKg;
+  }
+
   public LocalDate getFechaTueste() {
     return fechaTueste;
+  }
+
+  public void setFechaTueste(LocalDate fechaTueste) {
+    this.fechaTueste = fechaTueste;
   }
 
   public String getNotas() {

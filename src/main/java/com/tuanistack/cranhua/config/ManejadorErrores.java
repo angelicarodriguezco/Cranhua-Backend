@@ -13,6 +13,7 @@ import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
 import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
 import com.tuanistack.cranhua.finca.UltimoDuenoException;
 import com.tuanistack.cranhua.finca.dto.ConflictoFinca;
+import com.tuanistack.cranhua.tueste.TuesteInvalidoException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -56,6 +57,12 @@ public class ManejadorErrores {
   @ExceptionHandler(CosechaInvalidaException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public RespuestaError cosechaInvalida(CosechaInvalidaException e) {
+    return new RespuestaError(DATOS_INVALIDOS, e.getErrores());
+  }
+
+  @ExceptionHandler(TuesteInvalidoException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public RespuestaError tuesteInvalido(TuesteInvalidoException e) {
     return new RespuestaError(DATOS_INVALIDOS, e.getErrores());
   }
 
