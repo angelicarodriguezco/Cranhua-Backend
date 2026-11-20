@@ -204,8 +204,7 @@ class TuesteControllerTest {
   void pesoVerdeMayorALosKgDisponiblesDelLoteDa400() throws Exception {
     Lote lote = lote(mario, "100.00", "CRH-2026-0105");
     tueste(lote, NivelTueste.OSCURO, "50.00", "40.00", LocalDate.of(2026, 3, 1));
-    Tueste segundo =
-        tueste(lote, NivelTueste.CLARO, "40.00", "34.00", LocalDate.of(2026, 3, 8));
+    Tueste segundo = tueste(lote, NivelTueste.CLARO, "40.00", "34.00", LocalDate.of(2026, 3, 8));
 
     actualizar(mario, segundo.getId(), Map.of("pesoVerdeKg", 50.01))
         .andExpect(status().isBadRequest())

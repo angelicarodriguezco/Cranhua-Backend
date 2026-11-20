@@ -209,12 +209,10 @@ class LoteControllerTest {
   @Test
   void listaLosTuestesDeUnLotePropioOrdenadosPorFechaDesc() throws Exception {
     Lote lote = lote(mario, "100.00", "CRH-2026-0010");
-    Tueste primero =
-        tueste(lote, NivelTueste.CLARO, "50.00", "43.00", LocalDate.of(2026, 3, 1));
+    Tueste primero = tueste(lote, NivelTueste.CLARO, "50.00", "43.00", LocalDate.of(2026, 3, 1));
     primero.setNotas("Primer tueste.");
     tuesteRepository.saveAndFlush(primero);
-    Tueste segundo =
-        tueste(lote, NivelTueste.OSCURO, "40.00", "32.00", LocalDate.of(2026, 3, 8));
+    Tueste segundo = tueste(lote, NivelTueste.OSCURO, "40.00", "32.00", LocalDate.of(2026, 3, 8));
     lote(mario, "20.00", "CRH-2026-0011");
 
     mockMvc

@@ -106,8 +106,7 @@ class TuesteRepositoryTest {
   @Test
   void sumaPesoVerdeDelLoteExcluyendoTueste() {
     Tueste primero =
-        tuesteRepository.saveAndFlush(
-            tueste(NivelTueste.CLARO, "43.00", LocalDate.of(2026, 3, 1)));
+        tuesteRepository.saveAndFlush(tueste(NivelTueste.CLARO, "43.00", LocalDate.of(2026, 3, 1)));
     Tueste segundo =
         tuesteRepository.saveAndFlush(
             tueste(NivelTueste.OSCURO, "40.00", LocalDate.of(2026, 3, 8)));

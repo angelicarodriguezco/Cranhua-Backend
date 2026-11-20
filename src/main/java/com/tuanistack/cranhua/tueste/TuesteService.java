@@ -46,7 +46,9 @@ public class TuesteService {
         tuesteRepository
             .findById(tuesteId)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
     Lote lote = tueste.getLote();
     if (!lote.getSolicitud().getTostador().getId().equals(tostadorId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Este lote no es tuyo.");
@@ -80,7 +82,8 @@ public class TuesteService {
         loteRepository
             .findById(loteId)
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese lote."));
+                () ->
+                    new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese lote."));
     if (!lote.getSolicitud().getTostador().getId().equals(tostadorId)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Este lote no es tuyo.");
     }
@@ -95,10 +98,8 @@ public class TuesteService {
     }
 
     BigDecimal pesoOtros =
-        tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(
-            tueste.getLote().getId(), tueste.getId());
-    BigDecimal kgPorTostar =
-        tueste.getLote().getSolicitud().getCantidadKg().subtract(pesoOtros);
+        tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(tueste.getLote().getId(), tueste.getId());
+    BigDecimal kgPorTostar = tueste.getLote().getSolicitud().getCantidadKg().subtract(pesoOtros);
     if (pesoVerde.compareTo(kgPorTostar) > 0) {
       errores.put("pesoVerdeKg", "El peso verde supera los kg disponibles del lote.");
     }
