@@ -16,7 +16,7 @@ public interface TuesteRepository extends JpaRepository<Tueste, UUID> {
       select coalesce(sum(t.pesoVerdeKg), 0)
       from Tueste t
       where t.lote.id = :loteId
-        and t.id <> :tuesteId
+        and (:tuesteId is null or t.id <> :tuesteId)
       """)
   BigDecimal sumPesoVerdeKgByLoteIdExcluding(
       @Param("loteId") UUID loteId, @Param("tuesteId") UUID tuesteId);

@@ -9,6 +9,7 @@ import java.util.UUID;
 public record TuesteResponse(
     UUID id,
     UUID loteId,
+    String codigoLote,
     NivelTueste nivel,
     BigDecimal pesoVerdeKg,
     BigDecimal pesoTostadoKg,
@@ -20,6 +21,7 @@ public record TuesteResponse(
     return new TuesteResponse(
         tueste.getId(),
         tueste.getLote().getId(),
+        tueste.getLote().getCodigo(),
         tueste.getNivel(),
         tueste.getPesoVerdeKg(),
         tueste.getPesoTostadoKg(),

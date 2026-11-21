@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import com.tuanistack.cranhua.cuenta.Rol;
 import com.tuanistack.cranhua.finca.Cosecha;
 import com.tuanistack.cranhua.finca.CosechaRepository;
 import com.tuanistack.cranhua.finca.FincaRepository;
+import com.tuanistack.cranhua.lote.EstadoTrazabilidad;
 import com.tuanistack.cranhua.lote.Lote;
 import com.tuanistack.cranhua.lote.LoteRepository;
 import com.tuanistack.cranhua.solicitud.Solicitud;
@@ -119,6 +121,99 @@ class TuesteControllerTest {
             .cookie(sesion(cuenta))
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(body)));
+  }
+
+  private ResultActions registrar(Cuenta cuenta, Map<String, Object> body) throws Exception {
+    return mockMvc.perform(
+        post("/api/tuestes")
+            .cookie(sesion(cuenta))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(body)));
+  }
+
+  private Map<String, Object> nuevoTueste(Lote lote, Object pesoVerdeKg, Object pesoTostadoKg) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("loteId", lote.getId());
+    body.put("nivel", "MEDIO");
+    body.put("pesoVerdeKg", pesoVerdeKg);
+    body.put("pesoTostadoKg", pesoTostadoKg);
+    body.put("fechaTueste", "2026-03-01");
+    return body;
+  }
+
+  @Test
+  void registraElTuesteConLaMermaYActivaElCodigoDelLote() throws Exception {
+    Lote lote = lote(mario, "100.00", "CRH-2026-0110");
+    Map<String, Object> body = nuevoTueste(lote, 50, 43);
+    body.put("notas", "Primer tueste");
+
+    registrar(mario, body)
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.loteId").value(lote.getId().toString()))
+        .andExpect(jsonPath("$.codigoLote").value("CRH-2026-0110"))
+        .andExpect(jsonPath("$.nivel").value("MEDIO"))
+        .andExpect(jsonPath("$.pesoVerdeKg").value(50.0))
+        .andExpect(jsonPath("$.pesoTostadoKg").value(43.0))
+        .andExpect(jsonPath("$.merma").value(14.0))
+        .andExpect(jsonPath("$.fechaTueste").value("2026-03-01"))
+        .andExpect(jsonPath("$.notas").value("Primer tueste"));
+
+    assertThat(tuesteRepository.findByLoteIdOrderByFechaTuesteDesc(lote.getId())).hasSize(1);
+    assertThat(loteRepository.findById(lote.getId()).orElseThrow().getEstadoTrazabilidad())
+        .isEqualTo(EstadoTrazabilidad.ACTIVO);
+  }
+
+  @Test
+  void registraVariosTuestesHastaLosKgQueQuedanPorTostar() throws Exception {
+    Lote lote = lote(mario, "100.00", "CRH-2026-0111");
+    tueste(lote, NivelTueste.CLARO, "60.00", "51.00", LocalDate.of(2026, 3, 1));
+
+    registrar(mario, nuevoTueste(lote, 40, 34)).andExpect(status().isCreated());
+    registrar(mario, nuevoTueste(lote, 0.01, 0.01))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.pesoVerdeKg")
+                .value("El peso verde supera los kg disponibles del lote."));
+
+    assertThat(tuesteRepository.findByLoteIdOrderByFechaTuesteDesc(lote.getId())).hasSize(2);
+  }
+
+  @Test
+  void registrarConPesoTostadoMayorAlVerdeDa400() throws Exception {
+    Lote lote = lote(mario, "100.00", "CRH-2026-0112");
+
+    registrar(mario, nuevoTueste(lote, 40, 40.01))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.errores.pesoTostadoKg")
+                .value("El peso tostado no puede ser mayor al peso verde."));
+
+    assertThat(tuesteRepository.count()).isZero();
+  }
+
+  @Test
+  void registrarConNivelInvalidoDa400() throws Exception {
+    Lote lote = lote(mario, "100.00", "CRH-2026-0113");
+    Map<String, Object> body = nuevoTueste(lote, 40, 34);
+    body.put("nivel", "FUERTE");
+
+    registrar(mario, body)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errores.nivel").value("Valor inválido."));
+  }
+
+  @Test
+  void registrarEnUnLoteAjenoDa403YNoActivaElCodigo() throws Exception {
+    Cuenta ana = cuenta("Ana Vargas", "ana@ejemplo.cr", Rol.TOSTADOR);
+    Lote lote = lote(mario, "100.00", "CRH-2026-0114");
+
+    registrar(ana, nuevoTueste(lote, 40, 34))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.mensaje").value("Este lote no es tuyo."));
+
+    assertThat(tuesteRepository.count()).isZero();
+    assertThat(loteRepository.findById(lote.getId()).orElseThrow().getEstadoTrazabilidad())
+        .isEqualTo(EstadoTrazabilidad.PENDIENTE);
   }
 
   @Test

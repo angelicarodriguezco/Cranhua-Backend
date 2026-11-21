@@ -118,5 +118,7 @@ class TuesteRepositoryTest {
         .isEqualByComparingTo("50.00");
     assertThat(tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), UUID.randomUUID()))
         .isEqualByComparingTo("100.00");
+    assertThat(tuesteRepository.sumPesoVerdeKgByLoteIdExcluding(lote.getId(), null))
+        .isEqualByComparingTo("100.00");
   }
 }
