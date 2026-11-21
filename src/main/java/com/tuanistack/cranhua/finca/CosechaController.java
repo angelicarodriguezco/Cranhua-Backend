@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.finca;
 
+import com.tuanistack.cranhua.finca.dto.ActualizarEstadoCosechaRequest;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
 import com.tuanistack.cranhua.finca.dto.RegistrarCosechaRequest;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,5 +40,14 @@ public class CosechaController {
   @PreAuthorize("hasRole('CAFETALERO')")
   public CosechaResponse obtener(@PathVariable UUID id, Authentication authentication) {
     return cosechaService.obtener(id, UUID.fromString(authentication.getName()));
+  }
+
+  @PatchMapping("/{id}/estado")
+  @PreAuthorize("hasRole('CAFETALERO')")
+  public CosechaResponse actualizarEstado(
+      @PathVariable UUID id,
+      @Valid @RequestBody ActualizarEstadoCosechaRequest request,
+      Authentication authentication) {
+    return cosechaService.actualizarEstado(id, request, UUID.fromString(authentication.getName()));
   }
 }

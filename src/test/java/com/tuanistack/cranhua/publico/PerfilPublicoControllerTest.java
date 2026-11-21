@@ -80,6 +80,7 @@ class PerfilPublicoControllerTest {
 
     Cosecha disponible = cosecha("Geisha", Proceso.HONEY, "CRH-2026-0001");
     disponible.registrarPesoTrasSeleccion(new BigDecimal("290.00"));
+    disponible.publicar();
     cosechaRepository.saveAndFlush(disponible);
     cosechaRepository.saveAndFlush(cosecha("Caturra", Proceso.LAVADO, null));
 
