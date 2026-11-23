@@ -20,6 +20,7 @@ public class CloudinaryAlmacenamientoImagenes implements AlmacenamientoImagenes 
 
   private static final String CARPETA_FOTOS = "cranhua/fotos";
   private static final String CARPETA_BANNERS = "cranhua/banners";
+  private static final String CARPETA_PORTADAS = "cranhua/portadas";
 
   private final Cloudinary cloudinary;
   private final CloudinaryProperties propiedades;
@@ -37,6 +38,11 @@ public class CloudinaryAlmacenamientoImagenes implements AlmacenamientoImagenes 
   @Override
   public String subirBanner(MultipartFile archivo) {
     return subir(archivo, CARPETA_BANNERS);
+  }
+
+  @Override
+  public String subirPortada(MultipartFile archivo) {
+    return subir(archivo, CARPETA_PORTADAS);
   }
 
   private String subir(MultipartFile archivo, String carpeta) {

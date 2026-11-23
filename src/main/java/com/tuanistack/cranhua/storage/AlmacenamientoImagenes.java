@@ -7,4 +7,6 @@ public interface AlmacenamientoImagenes {
   String subirFoto(MultipartFile archivo);
 
   String subirBanner(MultipartFile archivo);
+
+  String subirPortada(MultipartFile archivo);
 }
