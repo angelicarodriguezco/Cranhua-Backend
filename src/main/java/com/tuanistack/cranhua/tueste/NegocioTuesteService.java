@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.tueste;
 
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import com.tuanistack.cranhua.tueste.dto.ActualizarNegocioRequest;
 import com.tuanistack.cranhua.tueste.dto.NegocioTuesteResponse;
 import com.tuanistack.cranhua.tueste.dto.RegistrarNegocioRequest;
@@ -11,6 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -20,11 +22,15 @@ public class NegocioTuesteService {
 
   private final NegocioTuesteRepository negocioRepository;
   private final CuentaRepository cuentaRepository;
+  private final AlmacenamientoImagenes almacenamientoImagenes;
 
   public NegocioTuesteService(
-      NegocioTuesteRepository negocioRepository, CuentaRepository cuentaRepository) {
+      NegocioTuesteRepository negocioRepository,
+      CuentaRepository cuentaRepository,
+      AlmacenamientoImagenes almacenamientoImagenes) {
     this.negocioRepository = negocioRepository;
     this.cuentaRepository = cuentaRepository;
+    this.almacenamientoImagenes = almacenamientoImagenes;
   }
 
   @Transactional
@@ -77,11 +83,7 @@ public class NegocioTuesteService {
   @Transactional
   public NegocioTuesteResponse actualizar(
       UUID id, ActualizarNegocioRequest request, UUID cuentaId) {
-    NegocioTueste negocio = negocioExistente(id);
-    if (!negocio.getCuenta().getId().equals(cuentaId)) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Solo el dueño del negocio puede editarlo.");
-    }
+    NegocioTueste negocio = negocioPropio(id, cuentaId);
 
     Optional.ofNullable(request.nombre()).ifPresent(negocio::setNombre);
     Optional.ofNullable(request.nombreContacto()).ifPresent(negocio::setNombreContacto);
@@ -96,6 +98,22 @@ public class NegocioTuesteService {
         .ifPresent(url -> negocio.setPortadaUrl(enBlancoANull(url)));
 
     return NegocioTuesteResponse.de(negocioRepository.saveAndFlush(negocio));
+  }
+
+  @Transactional
+  public NegocioTuesteResponse actualizarPortada(UUID id, MultipartFile archivo, UUID cuentaId) {
+    NegocioTueste negocio = negocioPropio(id, cuentaId);
+    negocio.setPortadaUrl(almacenamientoImagenes.subirPortada(archivo));
+    return NegocioTuesteResponse.de(negocioRepository.saveAndFlush(negocio));
+  }
+
+  private NegocioTueste negocioPropio(UUID id, UUID cuentaId) {
+    NegocioTueste negocio = negocioExistente(id);
+    if (!negocio.getCuenta().getId().equals(cuentaId)) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Solo el dueño del negocio puede editarlo.");
+    }
+    return negocio;
   }
 
   private NegocioTueste negocioExistente(UUID id) {

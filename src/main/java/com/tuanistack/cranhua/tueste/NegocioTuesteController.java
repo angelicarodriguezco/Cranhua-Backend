@@ -6,6 +6,7 @@ import com.tuanistack.cranhua.tueste.dto.RegistrarNegocioRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -15,7 +16,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/tostadores")
@@ -54,6 +57,15 @@ public class NegocioTuesteController {
       @Valid @RequestBody ActualizarNegocioRequest request,
       Authentication authentication) {
     return negocioService.actualizar(id, request, idDe(authentication));
+  }
+
+  @PostMapping(value = "/{id}/portada", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('TOSTADOR')")
+  public NegocioTuesteResponse actualizarPortada(
+      @PathVariable UUID id,
+      @RequestPart("archivo") MultipartFile archivo,
+      Authentication authentication) {
+    return negocioService.actualizarPortada(id, archivo, idDe(authentication));
   }
 
   private static UUID idDe(Authentication authentication) {
