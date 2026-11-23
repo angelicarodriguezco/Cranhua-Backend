@@ -164,14 +164,26 @@ class NegocioTuesteControllerTest {
   }
 
   @Test
-  void cualquierRolConsultaElNegocio() throws Exception {
+  void cafeteriaYDuenoConsultanElDetalle() throws Exception {
     Cuenta cafetalero = cuenta("Andrés Solano", "andres@ejemplo.cr", Rol.CAFETALERO);
+    Cuenta cafeteria = cuenta("Sofía Jiménez", "sofia@ejemplo.cr", Rol.CAFETERIA);
     String id = registrarId(mariana);
 
     mockMvc
         .perform(get("/api/tostadores/" + id).cookie(sesion(cafetalero)))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(get("/api/tostadores/" + id).cookie(sesion(cafeteria)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.nombre").value("Tostaduría Volcán"));
+        .andExpect(jsonPath("$.nombre").value("Tostaduría Volcán"))
+        .andExpect(jsonPath("$.nombreContacto").value("Mariana Castro"))
+        .andExpect(jsonPath("$.tuestes").isArray())
+        .andExpect(jsonPath("$.cuentaId").doesNotExist());
+    mockMvc
+        .perform(get("/api/tostadores/" + id).cookie(sesion(mariana)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nombre").value("Tostaduría Volcán"))
+        .andExpect(jsonPath("$.tuestes").isArray());
   }
 
   @Test
