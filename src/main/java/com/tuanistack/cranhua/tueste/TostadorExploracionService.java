@@ -30,15 +30,16 @@ public class TostadorExploracionService {
     Map<UUID, BigDecimal> kgPorNegocio = kgDisponiblesPorNegocio();
     return negocioRepository.activosParaExplorar().stream()
         .filter(n -> estilo == null || n.getEstilos().contains(estilo))
-        .map(n -> TostadorExploracionResponse.de(
-            n, kgPorNegocio.getOrDefault(n.getId(), BigDecimal.ZERO)))
+        .map(
+            n ->
+                TostadorExploracionResponse.de(
+                    n, kgPorNegocio.getOrDefault(n.getId(), BigDecimal.ZERO)))
         .filter(r -> !disponible || r.kgDisponibles().signum() > 0)
         .toList();
   }
 
   @Transactional(readOnly = true)
-  public DetalleTostadorExploracionResponse obtener(
-      UUID id, UUID cuentaId, boolean esCafeteria) {
+  public DetalleTostadorExploracionResponse obtener(UUID id, UUID cuentaId, boolean esCafeteria) {
     NegocioTueste negocio =
         negocioRepository
             .findByIdAndEliminadoFalse(id)
@@ -52,8 +53,7 @@ public class TostadorExploracionService {
           HttpStatus.FORBIDDEN, "No tienes permiso para ver este negocio.");
     }
 
-    List<TuesteDisponibleExploracionResponse> tuestes =
-        tuesteRepository.disponiblesDelNegocio(id);
+    List<TuesteDisponibleExploracionResponse> tuestes = tuesteRepository.disponiblesDelNegocio(id);
     return DetalleTostadorExploracionResponse.de(negocio, tuestes);
   }
 

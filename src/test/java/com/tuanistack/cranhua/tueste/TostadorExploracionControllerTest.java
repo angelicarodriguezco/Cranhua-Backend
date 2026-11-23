@@ -175,8 +175,11 @@ class TostadorExploracionControllerTest {
         .andExpect(
             jsonPath("$[*].id")
                 .value(containsInAnyOrder(volcan.getId().toString(), sinStock.getId().toString())))
-        .andExpect(jsonPath("$[?(@.id == '%s')].nombre", volcan.getId()).value(contains("Tostaduría Volcán")))
-        .andExpect(jsonPath("$[?(@.id == '%s')].canton", volcan.getId()).value(contains("San José")))
+        .andExpect(
+            jsonPath("$[?(@.id == '%s')].nombre", volcan.getId())
+                .value(contains("Tostaduría Volcán")))
+        .andExpect(
+            jsonPath("$[?(@.id == '%s')].canton", volcan.getId()).value(contains("San José")))
         .andExpect(
             jsonPath("$[?(@.id == '%s')].provincia", volcan.getId()).value(contains("San José")))
         .andExpect(
@@ -234,8 +237,7 @@ class TostadorExploracionControllerTest {
 
   @Test
   void elDetalleTraeContactoYTuestesConKgDisponibles() throws Exception {
-    NegocioTueste negocio =
-        negocio(mario, "Tostaduría Volcán", Set.of(NivelTueste.MEDIO));
+    NegocioTueste negocio = negocio(mario, "Tostaduría Volcán", Set.of(NivelTueste.MEDIO));
     negocio.setPortadaUrl("https://res.cloudinary.com/cranhua/portada.jpg");
     negocioRepository.saveAndFlush(negocio);
 
@@ -257,8 +259,7 @@ class TostadorExploracionControllerTest {
         .andExpect(jsonPath("$.canton").value("San José"))
         .andExpect(jsonPath("$.provincia").value("San José"))
         .andExpect(jsonPath("$.estilos", contains("MEDIO")))
-        .andExpect(
-            jsonPath("$.portadaUrl").value("https://res.cloudinary.com/cranhua/portada.jpg"))
+        .andExpect(jsonPath("$.portadaUrl").value("https://res.cloudinary.com/cranhua/portada.jpg"))
         .andExpect(jsonPath("$.tuestes", hasSize(1)))
         .andExpect(jsonPath("$.tuestes[0].id").value(disponible.getId().toString()))
         .andExpect(jsonPath("$.tuestes[0].fincaOrigen").value("Finca El Tucán"))
@@ -309,9 +310,7 @@ class TostadorExploracionControllerTest {
   @Test
   void pideSesionYRolCafeteriaParaElListado() throws Exception {
     mockMvc.perform(get("/api/tostadores")).andExpect(status().isUnauthorized());
-    mockMvc
-        .perform(get("/api/tostadores").cookie(sesion(mario)))
-        .andExpect(status().isForbidden());
+    mockMvc.perform(get("/api/tostadores").cookie(sesion(mario))).andExpect(status().isForbidden());
     mockMvc
         .perform(
             get("/api/tostadores")
