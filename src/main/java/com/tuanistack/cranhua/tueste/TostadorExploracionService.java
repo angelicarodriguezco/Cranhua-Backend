@@ -30,10 +30,9 @@ public class TostadorExploracionService {
     Map<UUID, BigDecimal> kgPorNegocio = kgDisponiblesPorNegocio();
     return negocioRepository.activosParaExplorar().stream()
         .filter(n -> estilo == null || n.getEstilos().contains(estilo))
-        .map(
-            n ->
-                TostadorExploracionResponse.de(
-                    n, kgPorNegocio.getOrDefault(n.getId(), BigDecimal.ZERO)))
+        .map(n ->
+            TostadorExploracionResponse.de(
+                n, kgPorNegocio.getOrDefault(n.getId(), BigDecimal.ZERO)))
         .filter(r -> !disponible || r.kgDisponibles().signum() > 0)
         .toList();
   }
@@ -43,10 +42,8 @@ public class TostadorExploracionService {
     NegocioTueste negocio =
         negocioRepository
             .findByIdAndEliminadoFalse(id)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No encontramos ese negocio."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese negocio."));
 
     if (!esCafeteria && !negocio.getCuenta().getId().equals(cuentaId)) {
       throw new ResponseStatusException(
