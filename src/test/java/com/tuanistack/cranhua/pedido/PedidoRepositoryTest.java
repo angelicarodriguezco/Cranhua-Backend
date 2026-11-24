@@ -23,7 +23,10 @@ import com.tuanistack.cranhua.tueste.NivelTueste;
 import com.tuanistack.cranhua.tueste.Tueste;
 import com.tuanistack.cranhua.tueste.TuesteRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -178,6 +181,38 @@ class PedidoRepositoryTest {
     assertThat(pedidoRepository.kgComprometidos(tueste.getId())).isEqualByComparingTo("0");
     assertThat(tuesteRepository.kgDisponibles(tueste.getId()))
         .hasValueSatisfying(kg -> assertThat(kg).isEqualByComparingTo("42.00"));
+  }
+
+  @Test
+  void historialListaTodosLosPedidosSinLimite() {
+    Pedido primero = pedir("5.00");
+    Pedido segundo = pedir("3.00");
+    Pedido tercero = pedir("2.00");
+    entityManager.clear();
+
+    assertThat(pedidoRepository.historial(cafeteria.getId()))
+        .extracting(p -> p.id())
+        .containsExactly(tercero.getId(), segundo.getId(), primero.getId());
+  }
+
+  @Test
+  void kgEntregadosEsteMesSoloSumaEntregadosDelMesActual() {
+    ZoneId costaRica = ZoneId.of("America/Costa_Rica");
+    YearMonth mesActual = YearMonth.now(costaRica);
+    Instant desde = mesActual.atDay(1).atStartOfDay(costaRica).toInstant();
+    Instant hasta = mesActual.plusMonths(1).atDay(1).atStartOfDay(costaRica).toInstant();
+
+    Pedido entregado = pedir("10.00");
+    entregado.entregar();
+    Pedido cancelado = pedir("7.00");
+    cancelado.cancelar();
+    pedir("4.00");
+    pedidoRepository.saveAndFlush(entregado);
+    pedidoRepository.saveAndFlush(cancelado);
+    entityManager.clear();
+
+    assertThat(pedidoRepository.kgEntregadosEsteMes(cafeteria.getId(), desde, hasta))
+        .isEqualByComparingTo("10.00");
   }
 
   @Test
