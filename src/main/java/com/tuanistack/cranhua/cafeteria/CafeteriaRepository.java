@@ -33,6 +33,7 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
       select distinct c from ItemMenu i
       join i.cafeteria c
       join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+        and co.eliminada = false
       where co.finca.id = :fincaId and c.eliminada = false
       order by c.nombre
       """)

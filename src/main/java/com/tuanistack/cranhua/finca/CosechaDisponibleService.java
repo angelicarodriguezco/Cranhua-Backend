@@ -52,6 +52,7 @@ public class CosechaDisponibleService {
     return cosecha.getEstado() == EstadoCosecha.PUBLICADA
         && cosecha.getKgDisponibles() != null
         && cosecha.getKgDisponibles().signum() > 0
+        && !cosecha.isEliminada()
         && !cosecha.getFinca().isEliminada();
   }
 

@@ -9,6 +9,7 @@ import com.tuanistack.cranhua.finca.dto.Coordenada;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
 import com.tuanistack.cranhua.finca.dto.FincaResponse;
 import com.tuanistack.cranhua.finca.dto.RegistrarFincaRequest;
+import com.tuanistack.cranhua.solicitud.SolicitudService;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,14 +29,17 @@ public class FincaService {
   private final FincaRepository fincaRepository;
   private final CuentaRepository cuentaRepository;
   private final CosechaRepository cosechaRepository;
+  private final SolicitudService solicitudService;
 
   public FincaService(
       FincaRepository fincaRepository,
       CuentaRepository cuentaRepository,
-      CosechaRepository cosechaRepository) {
+      CosechaRepository cosechaRepository,
+      SolicitudService solicitudService) {
     this.fincaRepository = fincaRepository;
     this.cuentaRepository = cuentaRepository;
     this.cosechaRepository = cosechaRepository;
+    this.solicitudService = solicitudService;
   }
 
   @Transactional
@@ -96,13 +100,16 @@ public class FincaService {
   public FincaResponse obtener(UUID fincaId, UUID cuentaId) {
     Finca finca = fincaVisible(fincaId, cuentaId);
     return FincaResponse.de(finca, fincaRepository.areaHectareas(finca.getId()))
-        .conCosechas(cosechaRepository.findByFincaIdOrderByFechaInicioDescIdAsc(fincaId));
+        .conCosechas(
+            cosechaRepository.findByFincaIdAndEliminadaFalseOrderByFechaInicioDescIdAsc(fincaId));
   }
 
   @Transactional(readOnly = true)
   public List<CosechaResponse> cosechas(UUID fincaId, UUID cuentaId) {
     fincaVisible(fincaId, cuentaId);
-    return cosechaRepository.findByFincaIdOrderByFechaInicioDescIdAsc(fincaId).stream()
+    return cosechaRepository
+        .findByFincaIdAndEliminadaFalseOrderByFechaInicioDescIdAsc(fincaId)
+        .stream()
         .map(CosechaResponse::de)
         .toList();
   }
@@ -144,6 +151,9 @@ public class FincaService {
     finca.getDuenos().removeIf(cuenta -> cuenta.getId().equals(cuentaId));
     if (finca.getDuenos().isEmpty()) {
       finca.eliminar();
+      cosechaRepository
+          .findByFincaIdAndEliminadaFalse(fincaId)
+          .forEach(cosecha -> solicitudService.rechazarPendientesDe(cosecha.getId()));
     }
   }
 

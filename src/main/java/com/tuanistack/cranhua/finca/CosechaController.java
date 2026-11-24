@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.finca;
 
 import com.tuanistack.cranhua.finca.dto.ActualizarEstadoCosechaRequest;
 import com.tuanistack.cranhua.finca.dto.CosechaResponse;
+import com.tuanistack.cranhua.finca.dto.EditarCosechaRequest;
 import com.tuanistack.cranhua.finca.dto.RegistrarCosechaRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -9,6 +10,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,6 +42,22 @@ public class CosechaController {
   @PreAuthorize("hasRole('CAFETALERO')")
   public CosechaResponse obtener(@PathVariable UUID id, Authentication authentication) {
     return cosechaService.obtener(id, UUID.fromString(authentication.getName()));
+  }
+
+  @PatchMapping("/{id}")
+  @PreAuthorize("hasRole('CAFETALERO')")
+  public CosechaResponse editar(
+      @PathVariable UUID id,
+      @Valid @RequestBody EditarCosechaRequest request,
+      Authentication authentication) {
+    return cosechaService.editar(id, request, UUID.fromString(authentication.getName()));
+  }
+
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasRole('CAFETALERO')")
+  public ResponseEntity<Void> eliminar(@PathVariable UUID id, Authentication authentication) {
+    cosechaService.eliminar(id, UUID.fromString(authentication.getName()));
+    return ResponseEntity.noContent().build();
   }
 
   @PatchMapping("/{id}/estado")

@@ -8,6 +8,7 @@ import com.tuanistack.cranhua.auth.CorreoEnUsoException;
 import com.tuanistack.cranhua.auth.CredencialesInvalidasException;
 import com.tuanistack.cranhua.auth.CuentaGoogleNoRegistradaException;
 import com.tuanistack.cranhua.auth.GoogleNoVerificadoException;
+import com.tuanistack.cranhua.finca.CosechaBloqueadaException;
 import com.tuanistack.cranhua.finca.CosechaInvalidaException;
 import com.tuanistack.cranhua.finca.FincaSuperpuestaException;
 import com.tuanistack.cranhua.finca.PerimetroInvalidoException;
@@ -58,6 +59,12 @@ public class ManejadorErrores {
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public RespuestaError cosechaInvalida(CosechaInvalidaException e) {
     return new RespuestaError(DATOS_INVALIDOS, e.getErrores());
+  }
+
+  @ExceptionHandler(CosechaBloqueadaException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public RespuestaError cosechaBloqueada(CosechaBloqueadaException e) {
+    return new RespuestaError(e.getMessage(), e.getErrores());
   }
 
   @ExceptionHandler(TuesteInvalidoException.class)

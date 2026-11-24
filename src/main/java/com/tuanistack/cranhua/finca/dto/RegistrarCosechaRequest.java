@@ -54,7 +54,8 @@ public record RegistrarCosechaRequest(
             inclusive = false,
             message = "El precio por kg tiene que ser mayor a 0.")
         @Digits(integer = 10, fraction = 2, message = "El precio por kg no es válido.")
-        BigDecimal precioKg) {
+        BigDecimal precioKg)
+    implements DatosCosecha {
 
   public record RepartoRequest(
       @NotNull(message = "Elegí el proceso.") Proceso proceso,
