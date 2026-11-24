@@ -1,5 +1,6 @@
 package com.tuanistack.cranhua.publico;
 
+import com.tuanistack.cranhua.publico.dto.MenuCafeteriaPublicoResponse;
 import com.tuanistack.cranhua.publico.dto.PerfilCafeteriaPublicoResponse;
 import com.tuanistack.cranhua.publico.dto.PerfilFincaPublicoResponse;
 import com.tuanistack.cranhua.publico.dto.PerfilTostadorPublicoResponse;
@@ -27,6 +28,11 @@ public class PerfilPublicoController {
   @GetMapping("/cafeterias/{id}")
   public PerfilCafeteriaPublicoResponse cafeteria(@PathVariable UUID id) {
     return perfilPublicoService.cafeteria(id);
+  }
+
+  @GetMapping("/cafeterias/{id}/menu")
+  public MenuCafeteriaPublicoResponse menu(@PathVariable UUID id) {
+    return perfilPublicoService.menu(id);
   }
 
   @GetMapping("/tostadores/{id}")
