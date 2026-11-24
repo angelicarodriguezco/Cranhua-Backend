@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.pedido;
 
 import com.tuanistack.cranhua.pedido.dto.PedidoRecienteResponse;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +36,20 @@ public interface PedidoRepository extends JpaRepository<Pedido, UUID> {
       """)
   BigDecimal kgEntregados(@Param("cafeteriaId") UUID cafeteriaId);
 
+  @Query(
+      """
+      select coalesce(sum(p.cantidadKg), 0)
+      from Pedido p
+      where p.cafeteria.id = :cafeteriaId
+        and p.estado = com.tuanistack.cranhua.pedido.EstadoPedido.ENTREGADO
+        and p.cerradoEn >= :desde
+        and p.cerradoEn < :hasta
+      """)
+  BigDecimal kgEntregadosEsteMes(
+      @Param("cafeteriaId") UUID cafeteriaId,
+      @Param("desde") Instant desde,
+      @Param("hasta") Instant hasta);
+
   // Un tostador cuenta si tiene al menos un pedido sin cancelar
   @Query(
       """
@@ -62,4 +77,19 @@ public interface PedidoRepository extends JpaRepository<Pedido, UUID> {
       order by p.pedidoEn desc, p.id
       """)
   List<PedidoRecienteResponse> recientes(@Param("cafeteriaId") UUID cafeteriaId, Pageable pageable);
+
+  @Query(
+      """
+      select new com.tuanistack.cranhua.pedido.dto.PedidoRecienteResponse(
+        p.id, coalesce(n.nombre, c.nombreCompleto), p.cantidadKg, p.pedidoEn, p.estado)
+      from Pedido p
+      join p.tueste t
+      join t.lote l
+      join l.solicitud s
+      join s.tostador c
+      left join NegocioTueste n on n.cuenta = c
+      where p.cafeteria.id = :cafeteriaId
+      order by p.pedidoEn desc, p.id
+      """)
+  List<PedidoRecienteResponse> historial(@Param("cafeteriaId") UUID cafeteriaId);
 }

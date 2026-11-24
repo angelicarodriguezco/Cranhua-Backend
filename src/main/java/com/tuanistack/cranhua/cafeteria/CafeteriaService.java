@@ -101,7 +101,7 @@ public class CafeteriaService {
     return CafeteriaResponse.de(cafeteriaRepository.saveAndFlush(cafeteria));
   }
 
-  private Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
+  public Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
     Cafeteria cafeteria =
         cafeteriaRepository
             .findByIdAndEliminadaFalse(id)
