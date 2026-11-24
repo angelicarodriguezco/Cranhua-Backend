@@ -23,6 +23,11 @@ import com.tuanistack.cranhua.finca.GeometriaUtil;
 import com.tuanistack.cranhua.finca.Proceso;
 import com.tuanistack.cranhua.finca.ProcesoReparto;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
+import com.tuanistack.cranhua.lote.Lote;
+import com.tuanistack.cranhua.lote.LoteRepository;
+import com.tuanistack.cranhua.solicitud.Solicitud;
+import com.tuanistack.cranhua.solicitud.SolicitudRepository;
+import com.tuanistack.cranhua.solicitud.SolicitudRepositoryTest;
 import com.tuanistack.cranhua.tueste.NegocioTueste;
 import com.tuanistack.cranhua.tueste.NegocioTuesteRepository;
 import com.tuanistack.cranhua.tueste.NivelTueste;
@@ -62,6 +67,10 @@ class PerfilPublicoControllerTest {
   @Autowired private ItemMenuRepository itemMenuRepository;
 
   @Autowired private NegocioTuesteRepository negocioTuesteRepository;
+
+  @Autowired private SolicitudRepository solicitudRepository;
+
+  @Autowired private LoteRepository loteRepository;
 
   private Finca finca;
 
@@ -123,6 +132,8 @@ class PerfilPublicoControllerTest {
     itemMenuRepository.deleteAll();
     cafeteriaRepository.deleteAll();
     negocioTuesteRepository.deleteAll();
+    loteRepository.deleteAll();
+    solicitudRepository.deleteAll();
     cosechaRepository.deleteAll();
     fincaRepository.deleteAll();
     cuentaRepository.deleteAll();
@@ -197,6 +208,32 @@ class PerfilPublicoControllerTest {
         .andExpect(jsonPath("$.telefono").doesNotExist())
         .andExpect(jsonPath("$.correo").doesNotExist())
         .andExpect(jsonPath("$.nombreContacto").doesNotExist());
+  }
+
+  @Test
+  void elCodigoDeUnLoteEnlazaLaFincaDeSuCosecha() throws Exception {
+    Finca origen = fincaRepository.saveAndFlush(SolicitudRepositoryTest.finca());
+    Solicitud solicitud =
+        new Solicitud(
+            cosechaRepository.saveAndFlush(SolicitudRepositoryTest.nuevaCosecha(origen)),
+            tostador.getCuenta(),
+            new BigDecimal("60.00"));
+    solicitud.aprobar();
+    solicitud = solicitudRepository.saveAndFlush(solicitud);
+    // Mismo código que la cosecha de El Roble: si hay lote, manda el lote
+    loteRepository.saveAndFlush(new Lote(solicitud, "CRH-2026-0001"));
+
+    mockMvc
+        .perform(get("/api/publico/cafeterias/" + cafeteria.getId()))
+        .andExpect(jsonPath("$.fincas", hasSize(1)))
+        .andExpect(jsonPath("$.fincas[0].id").value(origen.getId().toString()));
+    mockMvc
+        .perform(get("/api/publico/fincas/" + origen.getId()))
+        .andExpect(jsonPath("$.cafeterias", hasSize(1)))
+        .andExpect(jsonPath("$.cafeterias[0].id").value(cafeteria.getId().toString()));
+    mockMvc
+        .perform(get("/api/publico/fincas/" + finca.getId()))
+        .andExpect(jsonPath("$.cafeterias", hasSize(0)));
   }
 
   @Test

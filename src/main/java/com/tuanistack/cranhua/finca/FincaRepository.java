@@ -56,7 +56,10 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
   @Query(
       """
       select distinct f from ItemMenu i
-      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
+      left join Lote l on l.codigo = i.codigoTrazabilidad
+      left join l.solicitud s
+      join Cosecha co on co = s.cosecha
+        or (l.id is null and co.codigoLote = i.codigoTrazabilidad)
       join co.finca f
       where i.cafeteria.id = :cafeteriaId and f.eliminada = false
       order by f.nombre

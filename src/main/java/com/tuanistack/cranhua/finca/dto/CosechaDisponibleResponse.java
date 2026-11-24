@@ -37,7 +37,7 @@ public record CosechaDisponibleResponse(
   }
 
   // Las notas de sabor se escriben como texto libre separado por comas
-  static List<String> notas(String notasSabor) {
+  public static List<String> notas(String notasSabor) {
     if (notasSabor == null) {
       return List.of();
     }
