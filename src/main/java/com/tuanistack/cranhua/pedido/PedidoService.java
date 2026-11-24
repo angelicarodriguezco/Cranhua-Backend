@@ -49,13 +49,10 @@ public class PedidoService {
     Tueste tueste =
         tuesteRepository
             .findById(request.tuesteId())
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese tueste."));
 
-    BigDecimal disponibles =
-        tuesteRepository.kgDisponibles(tueste.getId()).orElse(BigDecimal.ZERO);
+    BigDecimal disponibles = tuesteRepository.kgDisponibles(tueste.getId()).orElse(BigDecimal.ZERO);
     if (request.cantidadKg().compareTo(disponibles) > 0) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
@@ -101,10 +98,8 @@ public class PedidoService {
     Pedido pedido =
         pedidoRepository
             .findById(pedidoId)
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "No encontramos ese pedido."));
+            .orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese pedido."));
 
     if (!pedido.getCafeteria().getCuenta().getId().equals(cuentaId)) {
       throw new ResponseStatusException(
@@ -127,11 +122,9 @@ public class PedidoService {
   private Cafeteria cafeteriaDe(UUID cuentaId) {
     return cafeteriaRepository
         .findByCuentaIdAndEliminadaFalse(cuentaId)
-        .orElseThrow(
-            () ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Tu cuenta todavía no tiene una cafetería registrada."));
+        .orElseThrow(() ->
+            new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene una cafetería registrada."));
   }
 
   private PedidoRecienteResponse aResponse(Pedido pedido) {
@@ -142,10 +135,6 @@ public class PedidoService {
             .map(NegocioTueste::getNombre)
             .orElse(tostador.getNombreCompleto());
     return new PedidoRecienteResponse(
-        pedido.getId(),
-        nombre,
-        pedido.getCantidadKg(),
-        pedido.getPedidoEn(),
-        pedido.getEstado());
+        pedido.getId(), nombre, pedido.getCantidadKg(), pedido.getPedidoEn(), pedido.getEstado());
   }
 }

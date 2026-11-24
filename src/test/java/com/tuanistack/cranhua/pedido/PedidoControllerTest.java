@@ -189,9 +189,7 @@ class PedidoControllerTest {
 
   private void cerradoEn(Pedido pedido, Instant instante) {
     jdbcTemplate.update(
-        "update pedido set cerrado_en = ? where id = ?",
-        Timestamp.from(instante),
-        pedido.getId());
+        "update pedido set cerrado_en = ? where id = ?", Timestamp.from(instante), pedido.getId());
   }
 
   private Cookie sesion(Cuenta cuenta) {
@@ -280,8 +278,7 @@ class PedidoControllerTest {
     Pedido entregadoEsteMes = entregado(brumas, "10.50");
     Pedido entregadoMesPasado = entregado(brumas, "5.00");
     YearMonth mesPasado = YearMonth.now(COSTA_RICA).minusMonths(1);
-    cerradoEn(
-        entregadoMesPasado, mesPasado.atDay(15).atStartOfDay(COSTA_RICA).toInstant());
+    cerradoEn(entregadoMesPasado, mesPasado.atDay(15).atStartOfDay(COSTA_RICA).toInstant());
     Pedido cancelado = enCamino(brumas, "3.00");
     cancelado.cancelar();
     pedidoRepository.saveAndFlush(cancelado);
@@ -331,8 +328,7 @@ class PedidoControllerTest {
         .andExpect(jsonPath("$.mensaje").value("El pedido ya fue cerrado."));
     actualizar(sofia, aEntregar.getId(), EstadoPedido.EN_CAMINO)
         .andExpect(status().isBadRequest())
-        .andExpect(
-            jsonPath("$.mensaje").value("Solo se puede marcar como entregado o cancelado."));
+        .andExpect(jsonPath("$.mensaje").value("Solo se puede marcar como entregado o cancelado."));
   }
 
   @Test
@@ -349,8 +345,7 @@ class PedidoControllerTest {
     actualizar(diego, deSofia.getId(), EstadoPedido.ENTREGADO)
         .andExpect(status().isForbidden())
         .andExpect(
-            jsonPath("$.mensaje")
-                .value("Solo la cafetería dueña del pedido puede actualizarlo."));
+            jsonPath("$.mensaje").value("Solo la cafetería dueña del pedido puede actualizarlo."));
 
     historial(mario).andExpect(status().isForbidden());
     crear(mario, tueste.getId(), "1.00").andExpect(status().isForbidden());
