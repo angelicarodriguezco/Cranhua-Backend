@@ -40,4 +40,13 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
       order by c.nombre
       """)
   List<Cafeteria> vendenCafeDeFinca(@Param("fincaId") UUID fincaId);
+
+  @Query(
+      """
+      select distinct c from ItemMenu i
+      join i.cafeteria c
+      where i.codigoTrazabilidad = :codigo and c.eliminada = false
+      order by c.nombre
+      """)
+  List<Cafeteria> vendenLote(@Param("codigo") String codigo);
 }

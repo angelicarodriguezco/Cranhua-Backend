@@ -13,6 +13,8 @@ public interface NegocioTuesteRepository extends JpaRepository<NegocioTueste, UU
 
   Optional<NegocioTueste> findByCuentaIdAndEliminadoFalse(UUID cuentaId);
 
+  Optional<NegocioTueste> findByCuentaId(UUID cuentaId);
+
   boolean existsByCuentaId(UUID cuentaId);
 
   @Query(

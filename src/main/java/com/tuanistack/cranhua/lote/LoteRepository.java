@@ -19,6 +19,18 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
 
   long countBySolicitudTostadorId(UUID tostadorId);
 
+  @Query(
+      """
+      select l from Lote l
+      join fetch l.solicitud s
+      join fetch s.cosecha c
+      join fetch c.finca
+      join fetch s.tostador
+      where l.codigo = :codigo
+        and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
+      """)
+  Optional<Lote> findActivoParaTrazabilidad(@Param("codigo") String codigo);
+
   @Query(value = "select nextval('lote_codigo_seq')", nativeQuery = true)
   long siguienteNumeroCodigo();
 
