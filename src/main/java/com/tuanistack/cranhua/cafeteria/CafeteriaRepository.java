@@ -27,13 +27,15 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
       nativeQuery = true)
   List<PuntoMapa> puntosMapa();
 
-  // Cafeterías activas con al menos un café del menú cuyo código es un lote de la finca
+  // Cafeterías activas con al menos un café del menú cuyo código viene de la finca
   @Query(
       """
       select distinct c from ItemMenu i
       join i.cafeteria c
-      join Cosecha co on co.codigoLote = i.codigoTrazabilidad
-        and co.eliminada = false
+      left join Lote l on l.codigo = i.codigoTrazabilidad
+      left join l.solicitud s
+      join Cosecha co on co = s.cosecha
+        or (l.id is null and co.codigoLote = i.codigoTrazabilidad and co.eliminada = false)
       where co.finca.id = :fincaId and c.eliminada = false
       order by c.nombre
       """)

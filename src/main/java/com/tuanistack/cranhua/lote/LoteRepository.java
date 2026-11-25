@@ -15,6 +15,8 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
 
   Optional<Lote> findByCodigo(String codigo);
 
+  boolean existsByCodigoAndEstadoTrazabilidad(String codigo, EstadoTrazabilidad estado);
+
   long countBySolicitudTostadorId(UUID tostadorId);
 
   boolean existsBySolicitudCosechaId(UUID cosechaId);
