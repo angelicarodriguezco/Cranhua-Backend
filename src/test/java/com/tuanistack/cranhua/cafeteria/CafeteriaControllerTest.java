@@ -1,7 +1,12 @@
 package com.tuanistack.cranhua.cafeteria;
 
 import static org.hamcrest.Matchers.contains;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -14,6 +19,7 @@ import com.tuanistack.cranhua.auth.CookieSesion;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.cuenta.Rol;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import jakarta.servlet.http.Cookie;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,7 +34,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -47,6 +55,8 @@ class CafeteriaControllerTest {
   @Autowired private CuentaRepository cuentaRepository;
 
   @Autowired private CafeteriaRepository cafeteriaRepository;
+
+  @MockitoBean private AlmacenamientoImagenes almacenamientoImagenes;
 
   private Cuenta sofia;
 
@@ -304,5 +314,36 @@ class CafeteriaControllerTest {
     mockMvc
         .perform(get("/api/cafeterias/" + UUID.randomUUID()).cookie(sesion(sofia)))
         .andExpect(status().isNotFound());
+  }
+
+  private ResultActions subirPortada(Cuenta cuenta, String id) throws Exception {
+    MockMultipartFile archivo =
+        new MockMultipartFile("archivo", "portada.jpg", "image/jpeg", new byte[] {1, 2, 3});
+    return mockMvc.perform(
+        multipart("/api/cafeterias/" + id + "/portada").file(archivo).cookie(sesion(cuenta)));
+  }
+
+  @Test
+  void subeLaPortadaYGuardaSuUrl() throws Exception {
+    String id = registrarId(sofia);
+    String url = "https://res.cloudinary.com/cranhua/image/upload/v1/cranhua/portadas/a.jpg";
+    when(almacenamientoImagenes.subirPortada(any())).thenReturn(url);
+
+    subirPortada(sofia, id)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.portadaUrl").value(url));
+
+    mockMvc
+        .perform(get("/api/cafeterias/actual").cookie(sesion(sofia)))
+        .andExpect(jsonPath("$.portadaUrl").value(url));
+  }
+
+  @Test
+  void portadaDeCafeteriaAjenaResponde403YNoSube() throws Exception {
+    String id = registrarId(sofia);
+
+    subirPortada(diego, id).andExpect(status().isForbidden());
+
+    verify(almacenamientoImagenes, never()).subirPortada(any());
   }
 }
