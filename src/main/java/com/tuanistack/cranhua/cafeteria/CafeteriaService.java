@@ -6,7 +6,9 @@ import com.tuanistack.cranhua.cafeteria.dto.RegistrarCafeteriaRequest;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
+import com.tuanistack.cranhua.pedido.PedidoRepository;
 import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,14 +25,17 @@ public class CafeteriaService {
 
   private final CafeteriaRepository cafeteriaRepository;
   private final CuentaRepository cuentaRepository;
+  private final PedidoRepository pedidoRepository;
   private final AlmacenamientoImagenes almacenamientoImagenes;
 
   public CafeteriaService(
       CafeteriaRepository cafeteriaRepository,
       CuentaRepository cuentaRepository,
+      PedidoRepository pedidoRepository,
       AlmacenamientoImagenes almacenamientoImagenes) {
     this.cafeteriaRepository = cafeteriaRepository;
     this.cuentaRepository = cuentaRepository;
+    this.pedidoRepository = pedidoRepository;
     this.almacenamientoImagenes = almacenamientoImagenes;
   }
 
@@ -114,6 +119,14 @@ public class CafeteriaService {
     return CafeteriaResponse.de(cafeteriaRepository.saveAndFlush(cafeteria));
   }
 
+  // La cuenta sigue activa; el menú se conserva pero deja de mostrarse
+  @Transactional
+  public void eliminar(UUID id, UUID cuentaId) {
+    Cafeteria cafeteria = cafeteriaPropia(id, cuentaId);
+    cafeteria.eliminar();
+    pedidoRepository.cancelarEnCamino(cafeteria.getId(), Instant.now());
+  }
+
   public Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
     Cafeteria cafeteria =
         cafeteriaRepository
@@ -122,7 +135,8 @@ public class CafeteriaService {
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cafetería."));
     if (!cafeteria.getCuenta().getId().equals(cuentaId)) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Solo el dueño de la cafetería puede verla o editarla.");
+          HttpStatus.FORBIDDEN,
+          "Solo el dueño de la cafetería puede verla, editarla o eliminarla.");
     }
     return cafeteria;
   }

@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.pedido;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -301,6 +302,27 @@ class PedidoControllerTest {
         .andExpect(jsonPath("$.pedidos[2].estado").value("ENTREGADO"))
         .andExpect(jsonPath("$.pedidos[3].id").value(activo.getId().toString()))
         .andExpect(jsonPath("$.pedidos[3].estado").value("EN_CAMINO"));
+  }
+
+  @Test
+  void eliminarLaCafeteriaCancelaSusPedidosEnCaminoYDevuelveLosKg() throws Exception {
+    Pedido pendiente = enCamino(brumas, "10.00");
+    Pedido recibido = entregado(brumas, "5.00");
+    Pedido ajeno = enCamino(deDiego, "3.00");
+    assertThat(kgDisponibles()).isEqualByComparingTo("24.00");
+
+    mockMvc
+        .perform(delete("/api/cafeterias/{id}", brumas.getId()).cookie(sesion(sofia)))
+        .andExpect(status().isNoContent());
+
+    Pedido cancelado = pedidoRepository.findById(pendiente.getId()).orElseThrow();
+    assertThat(cancelado.getEstado()).isEqualTo(EstadoPedido.CANCELADO);
+    assertThat(cancelado.getCerradoEn()).isNotNull();
+    assertThat(pedidoRepository.findById(recibido.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoPedido.ENTREGADO);
+    assertThat(pedidoRepository.findById(ajeno.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoPedido.EN_CAMINO);
+    assertThat(kgDisponibles()).isEqualByComparingTo("34.00");
   }
 
   @Test

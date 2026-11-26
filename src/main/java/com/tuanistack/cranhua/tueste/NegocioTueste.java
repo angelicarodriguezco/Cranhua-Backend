@@ -13,7 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -30,8 +30,9 @@ public class NegocioTueste {
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
-  @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "cuenta_id", nullable = false, unique = true, updatable = false)
+  // ManyToOne porque una cuenta puede tener negocios eliminados; el activo es único en la BD
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "cuenta_id", nullable = false, updatable = false)
   private Cuenta cuenta;
 
   @Column(nullable = false, length = 120)
