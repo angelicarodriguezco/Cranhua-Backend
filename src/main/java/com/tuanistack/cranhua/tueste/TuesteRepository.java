@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -33,6 +34,7 @@ public interface TuesteRepository extends JpaRepository<Tueste, UUID> {
              com.tuanistack.cranhua.pedido.EstadoPedido.ENTREGADO)), 0)
       from Tueste t
       where t.id = :tuesteId
+        and t.retirado = false
         and t.lote.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
       """)
   Optional<BigDecimal> kgDisponibles(@Param("tuesteId") UUID tuesteId);
@@ -52,6 +54,7 @@ public interface TuesteRepository extends JpaRepository<Tueste, UUID> {
       join l.solicitud s
       join NegocioTueste n on n.cuenta = s.tostador
       where n.eliminado = false
+        and t.retirado = false
         and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
       group by n.id
       """)
@@ -78,6 +81,7 @@ public interface TuesteRepository extends JpaRepository<Tueste, UUID> {
       join c.finca f
       join NegocioTueste n on n.cuenta = s.tostador
       where n.id = :negocioId
+        and t.retirado = false
         and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
         and t.pesoTostadoKg - coalesce(
           (select sum(p.cantidadKg) from Pedido p
@@ -89,4 +93,12 @@ public interface TuesteRepository extends JpaRepository<Tueste, UUID> {
       """)
   List<TuesteDisponibleExploracionResponse> disponiblesDelNegocio(
       @Param("negocioId") UUID negocioId);
+
+  @Modifying
+  @Query(
+      """
+      update Tueste t set t.retirado = true
+      where t.lote.id in (select l.id from Lote l where l.solicitud.tostador.id = :tostadorId)
+      """)
+  void retirarDelTostador(@Param("tostadorId") UUID tostadorId);
 }

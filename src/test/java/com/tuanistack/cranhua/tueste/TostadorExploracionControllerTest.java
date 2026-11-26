@@ -1,8 +1,10 @@
 package com.tuanistack.cranhua.tueste;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -23,6 +25,7 @@ import com.tuanistack.cranhua.lote.Lote;
 import com.tuanistack.cranhua.lote.LoteRepository;
 import com.tuanistack.cranhua.pedido.Pedido;
 import com.tuanistack.cranhua.pedido.PedidoRepository;
+import com.tuanistack.cranhua.solicitud.EstadoSolicitud;
 import com.tuanistack.cranhua.solicitud.Solicitud;
 import com.tuanistack.cranhua.solicitud.SolicitudRepository;
 import com.tuanistack.cranhua.solicitud.SolicitudRepositoryTest;
@@ -282,6 +285,42 @@ class TostadorExploracionControllerTest {
         .perform(get("/api/tostadores/{id}", UUID.randomUUID()).cookie(sesion(sofia)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.mensaje").value("No encontramos ese negocio."));
+  }
+
+  @Test
+  void eliminarElNegocioRetiraSusTuestesYRechazaSusSolicitudesPendientes() throws Exception {
+    NegocioTueste negocio = negocio(mario, "Tostaduría Volcán", Set.of(NivelTueste.MEDIO));
+    Tueste tueste = tuesteActivo(mario, NivelTueste.MEDIO, "42.00");
+    Solicitud pendiente =
+        solicitudRepository.saveAndFlush(new Solicitud(cosecha, mario, new BigDecimal("20.00")));
+    Cuenta laura = cuenta("Laura Mora", "laura@ejemplo.cr", Rol.TOSTADOR);
+    Solicitud ajena =
+        solicitudRepository.saveAndFlush(new Solicitud(cosecha, laura, new BigDecimal("20.00")));
+
+    mockMvc
+        .perform(delete("/api/tostadores/{id}", negocio.getId()).cookie(sesion(mario)))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/tostadores").cookie(sesion(sofia)))
+        .andExpect(jsonPath("$", hasSize(0)));
+    mockMvc
+        .perform(get("/api/publico/mapa").param("tipo", "TOSTADOR"))
+        .andExpect(jsonPath("$[?(@.id == '%s')]", negocio.getId()).isEmpty());
+    assertThat(tuesteRepository.kgDisponibles(tueste.getId())).isEmpty();
+    assertThat(solicitudRepository.findById(pendiente.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoSolicitud.RECHAZADA);
+    assertThat(solicitudRepository.findById(ajena.getId()).orElseThrow().getEstado())
+        .isEqualTo(EstadoSolicitud.PENDIENTE);
+    mockMvc
+        .perform(get("/api/publico/trazabilidad/{codigo}", tueste.getLote().getCodigo()))
+        .andExpect(status().isOk());
+
+    NegocioTueste nuevo = negocio(mario, "Volcán Nuevo", Set.of(NivelTueste.MEDIO));
+    mockMvc
+        .perform(get("/api/tostadores/{id}", nuevo.getId()).cookie(sesion(sofia)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tuestes", hasSize(0)));
   }
 
   @Test

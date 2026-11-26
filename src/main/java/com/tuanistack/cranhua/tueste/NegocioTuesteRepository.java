@@ -13,9 +13,10 @@ public interface NegocioTuesteRepository extends JpaRepository<NegocioTueste, UU
 
   Optional<NegocioTueste> findByCuentaIdAndEliminadoFalse(UUID cuentaId);
 
-  Optional<NegocioTueste> findByCuentaId(UUID cuentaId);
+  // El más reciente es el activo si existe; si no, el último que se eliminó
+  Optional<NegocioTueste> findFirstByCuentaIdOrderByCreadoEnDesc(UUID cuentaId);
 
-  boolean existsByCuentaId(UUID cuentaId);
+  boolean existsByCuentaIdAndEliminadoFalse(UUID cuentaId);
 
   @Query(
       """

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -345,5 +346,29 @@ class CafeteriaControllerTest {
     subirPortada(diego, id).andExpect(status().isForbidden());
 
     verify(almacenamientoImagenes, never()).subirPortada(any());
+  }
+
+  private ResultActions eliminar(Cuenta cuenta, String id) throws Exception {
+    return mockMvc.perform(delete("/api/cafeterias/" + id).cookie(sesion(cuenta)));
+  }
+
+  @Test
+  void soloElDuenoEliminaSuCafeteriaYDejaDeMostrarse() throws Exception {
+    String id = registrarId(sofia);
+
+    eliminar(diego, id).andExpect(status().isForbidden());
+    eliminar(sofia, id).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/cafeterias/actual").cookie(sesion(sofia)))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/publico/cafeterias/" + id + "/menu"))
+        .andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/publico/mapa").param("tipo", "CAFETERIA"))
+        .andExpect(jsonPath("$[?(@.id == '%s')]", id).isEmpty());
+    eliminar(sofia, id).andExpect(status().isNotFound());
+    registrar(sofia, cafeteria("Café Nuevo")).andExpect(status().isCreated());
   }
 }

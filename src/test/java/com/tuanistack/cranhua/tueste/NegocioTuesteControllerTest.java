@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -289,6 +290,24 @@ class NegocioTuesteControllerTest {
     subirPortada(pablo, id).andExpect(status().isForbidden());
 
     verify(almacenamientoImagenes, never()).subirPortada(any());
+  }
+
+  private ResultActions eliminar(Cuenta cuenta, String id) throws Exception {
+    return mockMvc.perform(delete("/api/tostadores/" + id).cookie(sesion(cuenta)));
+  }
+
+  @Test
+  void soloElDuenoEliminaSuNegocioYLaCuentaPuedeRegistrarOtro() throws Exception {
+    String id = registrarId(mariana);
+
+    eliminar(pablo, id).andExpect(status().isForbidden());
+    eliminar(mariana, id).andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get("/api/tostadores/actual").cookie(sesion(mariana)))
+        .andExpect(status().isNotFound());
+    eliminar(mariana, id).andExpect(status().isNotFound());
+    registrar(mariana, negocio("Tostaduría Nueva")).andExpect(status().isCreated());
   }
 
   @Test
