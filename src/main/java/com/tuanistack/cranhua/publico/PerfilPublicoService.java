@@ -3,6 +3,7 @@ package com.tuanistack.cranhua.publico;
 import com.tuanistack.cranhua.cafeteria.Cafeteria;
 import com.tuanistack.cranhua.cafeteria.CafeteriaRepository;
 import com.tuanistack.cranhua.cafeteria.CategoriaMenu;
+import com.tuanistack.cranhua.cafeteria.ItemMenuPublico;
 import com.tuanistack.cranhua.cafeteria.ItemMenuRepository;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.finca.Cosecha;
@@ -12,7 +13,11 @@ import com.tuanistack.cranhua.finca.Finca;
 import com.tuanistack.cranhua.finca.FincaRepository;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
 import com.tuanistack.cranhua.finca.ProcesoReparto;
+import com.tuanistack.cranhua.finca.dto.CosechaDisponibleResponse;
 import com.tuanistack.cranhua.publico.dto.EnlacePerfil;
+import com.tuanistack.cranhua.publico.dto.MenuCafeteriaPublicoResponse;
+import com.tuanistack.cranhua.publico.dto.MenuCafeteriaPublicoResponse.Cafe;
+import com.tuanistack.cranhua.publico.dto.MenuCafeteriaPublicoResponse.OtraComida;
 import com.tuanistack.cranhua.publico.dto.PerfilCafeteriaPublicoResponse;
 import com.tuanistack.cranhua.publico.dto.PerfilFincaPublicoResponse;
 import com.tuanistack.cranhua.publico.dto.PerfilFincaPublicoResponse.CosechaActiva;
@@ -85,10 +90,7 @@ public class PerfilPublicoService {
 
   @Transactional(readOnly = true)
   public PerfilCafeteriaPublicoResponse cafeteria(UUID id) {
-    Cafeteria cafeteria =
-        cafeteriaRepository
-            .findByIdAndEliminadaFalse(id)
-            .orElseThrow(() -> noEncontrado("No encontramos esa cafetería."));
+    Cafeteria cafeteria = cafeteriaActiva(id);
 
     return new PerfilCafeteriaPublicoResponse(
         cafeteria.getId(),
@@ -104,9 +106,30 @@ public class PerfilPublicoService {
         itemMenuRepository.countByCafeteriaIdAndCategoriaAndCodigoTrazabilidadIsNotNull(
             id, CategoriaMenu.CAFE),
         fincaRepository.originanMenuDeCafeteria(id).stream()
-            .map(f -> new EnlacePerfil(f.getId(), f.getNombre(), f.getCanton(), f.getProvincia()))
+            .map(PerfilPublicoService::enlace)
             .toList(),
         List.of());
+  }
+
+  @Transactional(readOnly = true)
+  public MenuCafeteriaPublicoResponse menu(UUID cafeteriaId) {
+    Cafeteria cafeteria = cafeteriaActiva(cafeteriaId);
+    List<ItemMenuPublico> items = itemMenuRepository.menuPublico(cafeteriaId);
+
+    return new MenuCafeteriaPublicoResponse(
+        cafeteria.getId(),
+        cafeteria.getNombre(),
+        cafeteria.getCanton(),
+        cafeteria.getProvincia(),
+        GeometriaUtil.coordenada(cafeteria.getUbicacion()),
+        items.stream()
+            .filter(item -> item.getCategoria() == CategoriaMenu.CAFE)
+            .map(PerfilPublicoService::cafe)
+            .toList(),
+        items.stream()
+            .filter(item -> item.getCategoria() == CategoriaMenu.OTRA_COMIDA)
+            .map(item -> new OtraComida(item.getNombre(), item.getPrecio()))
+            .toList());
   }
 
   @Transactional(readOnly = true)
@@ -128,6 +151,26 @@ public class PerfilPublicoService {
         // TODO: llenar cuando existan las compras y lotes de tueste
         List.of(),
         List.of());
+  }
+
+  private Cafeteria cafeteriaActiva(UUID id) {
+    return cafeteriaRepository
+        .findByIdAndEliminadaFalse(id)
+        .orElseThrow(() -> noEncontrado("No encontramos esa cafetería."));
+  }
+
+  private static Cafe cafe(ItemMenuPublico item) {
+    return new Cafe(
+        item.getNombre(),
+        item.getPrecio(),
+        item.getNivelTueste(),
+        CosechaDisponibleResponse.notas(item.getNotasSabor()),
+        item.getFinca() == null ? null : enlace(item.getFinca()));
+  }
+
+  private static EnlacePerfil enlace(Finca finca) {
+    return new EnlacePerfil(
+        finca.getId(), finca.getNombre(), finca.getCanton(), finca.getProvincia());
   }
 
   private static boolean estaActiva(Cosecha cosecha) {

@@ -6,12 +6,14 @@ import com.tuanistack.cranhua.cafeteria.dto.RegistrarCafeteriaRequest;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
+import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -21,11 +23,15 @@ public class CafeteriaService {
 
   private final CafeteriaRepository cafeteriaRepository;
   private final CuentaRepository cuentaRepository;
+  private final AlmacenamientoImagenes almacenamientoImagenes;
 
   public CafeteriaService(
-      CafeteriaRepository cafeteriaRepository, CuentaRepository cuentaRepository) {
+      CafeteriaRepository cafeteriaRepository,
+      CuentaRepository cuentaRepository,
+      AlmacenamientoImagenes almacenamientoImagenes) {
     this.cafeteriaRepository = cafeteriaRepository;
     this.cuentaRepository = cuentaRepository;
+    this.almacenamientoImagenes = almacenamientoImagenes;
   }
 
   @Transactional
@@ -101,7 +107,14 @@ public class CafeteriaService {
     return CafeteriaResponse.de(cafeteriaRepository.saveAndFlush(cafeteria));
   }
 
-  private Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
+  @Transactional
+  public CafeteriaResponse actualizarPortada(UUID id, MultipartFile archivo, UUID cuentaId) {
+    Cafeteria cafeteria = cafeteriaPropia(id, cuentaId);
+    cafeteria.setPortadaUrl(almacenamientoImagenes.subirPortada(archivo));
+    return CafeteriaResponse.de(cafeteriaRepository.saveAndFlush(cafeteria));
+  }
+
+  public Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
     Cafeteria cafeteria =
         cafeteriaRepository
             .findByIdAndEliminadaFalse(id)

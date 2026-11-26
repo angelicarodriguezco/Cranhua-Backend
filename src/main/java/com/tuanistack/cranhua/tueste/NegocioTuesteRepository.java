@@ -13,9 +13,19 @@ public interface NegocioTuesteRepository extends JpaRepository<NegocioTueste, UU
 
   Optional<NegocioTueste> findByCuentaIdAndEliminadoFalse(UUID cuentaId);
 
+  Optional<NegocioTueste> findByCuentaId(UUID cuentaId);
+
   boolean existsByCuentaId(UUID cuentaId);
 
-  // El negocio no guarda un punto propio: el pin va en la cabecera de su cantón
+  @Query(
+      """
+      select distinct n from NegocioTueste n
+      left join fetch n.estilos
+      where n.eliminado = false
+      order by n.nombre, n.id
+      """)
+  List<NegocioTueste> activosParaExplorar();
+
   @Query(
       value =
           """
