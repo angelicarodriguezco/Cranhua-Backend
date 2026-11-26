@@ -2,10 +2,12 @@ package com.tuanistack.cranhua.tueste;
 
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
+import com.tuanistack.cranhua.solicitud.SolicitudRepository;
 import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import com.tuanistack.cranhua.tueste.dto.ActualizarNegocioRequest;
 import com.tuanistack.cranhua.tueste.dto.NegocioTuesteResponse;
 import com.tuanistack.cranhua.tueste.dto.RegistrarNegocioRequest;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,14 +24,20 @@ public class NegocioTuesteService {
 
   private final NegocioTuesteRepository negocioRepository;
   private final CuentaRepository cuentaRepository;
+  private final TuesteRepository tuesteRepository;
+  private final SolicitudRepository solicitudRepository;
   private final AlmacenamientoImagenes almacenamientoImagenes;
 
   public NegocioTuesteService(
       NegocioTuesteRepository negocioRepository,
       CuentaRepository cuentaRepository,
+      TuesteRepository tuesteRepository,
+      SolicitudRepository solicitudRepository,
       AlmacenamientoImagenes almacenamientoImagenes) {
     this.negocioRepository = negocioRepository;
     this.cuentaRepository = cuentaRepository;
+    this.tuesteRepository = tuesteRepository;
+    this.solicitudRepository = solicitudRepository;
     this.almacenamientoImagenes = almacenamientoImagenes;
   }
 
@@ -40,7 +48,7 @@ public class NegocioTuesteService {
             .findById(cuentaId)
             .filter(c -> !c.isEliminada())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-    if (negocioRepository.existsByCuentaId(cuentaId)) {
+    if (negocioRepository.existsByCuentaIdAndEliminadoFalse(cuentaId)) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, YA_TIENE_NEGOCIO);
     }
 
@@ -107,11 +115,19 @@ public class NegocioTuesteService {
     return NegocioTuesteResponse.de(negocioRepository.saveAndFlush(negocio));
   }
 
+  // La cuenta sigue activa; los lotes y códigos quedan para la trazabilidad pública
+  @Transactional
+  public void eliminar(UUID id, UUID cuentaId) {
+    negocioPropio(id, cuentaId).eliminar();
+    tuesteRepository.retirarDelTostador(cuentaId);
+    solicitudRepository.rechazarPendientes(cuentaId, Instant.now());
+  }
+
   private NegocioTueste negocioPropio(UUID id, UUID cuentaId) {
     NegocioTueste negocio = negocioExistente(id);
     if (!negocio.getCuenta().getId().equals(cuentaId)) {
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Solo el dueño del negocio puede editarlo.");
+          HttpStatus.FORBIDDEN, "Solo el dueño del negocio puede editarlo o eliminarlo.");
     }
     return negocio;
   }

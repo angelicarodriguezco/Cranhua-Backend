@@ -47,6 +47,10 @@ public class Tueste {
   @Column(length = 500)
   private String notas;
 
+  // Deja de ofrecerse a las cafeterías cuando el tostador elimina su negocio
+  @Column(nullable = false)
+  private boolean retirado = false;
+
   @Column(name = "creado_en", nullable = false, updatable = false)
   private Instant creadoEn;
 

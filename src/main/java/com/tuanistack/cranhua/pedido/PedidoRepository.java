@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,6 +27,17 @@ public interface PedidoRepository extends JpaRepository<Pedido, UUID> {
           com.tuanistack.cranhua.pedido.EstadoPedido.ENTREGADO)
       """)
   BigDecimal kgComprometidos(@Param("tuesteId") UUID tuesteId);
+
+  // Los kg vuelven solos al tueste: los cancelados no cuentan como comprometidos
+  @Modifying
+  @Query(
+      """
+      update Pedido p
+      set p.estado = com.tuanistack.cranhua.pedido.EstadoPedido.CANCELADO, p.cerradoEn = :ahora
+      where p.cafeteria.id = :cafeteriaId
+        and p.estado = com.tuanistack.cranhua.pedido.EstadoPedido.EN_CAMINO
+      """)
+  void cancelarEnCamino(@Param("cafeteriaId") UUID cafeteriaId, @Param("ahora") Instant ahora);
 
   @Query(
       """
@@ -72,7 +84,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, UUID> {
       join t.lote l
       join l.solicitud s
       join s.tostador c
-      left join NegocioTueste n on n.cuenta = c
+      left join NegocioTueste n on n.cuenta = c and n.eliminado = false
       where p.cafeteria.id = :cafeteriaId
       order by p.pedidoEn desc, p.id
       """)
@@ -87,7 +99,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, UUID> {
       join t.lote l
       join l.solicitud s
       join s.tostador c
-      left join NegocioTueste n on n.cuenta = c
+      left join NegocioTueste n on n.cuenta = c and n.eliminado = false
       where p.cafeteria.id = :cafeteriaId
       order by p.pedidoEn desc, p.id
       """)

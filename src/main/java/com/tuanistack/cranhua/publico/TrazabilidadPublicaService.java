@@ -98,7 +98,7 @@ public class TrazabilidadPublicaService {
 
   private TostadorLote tostador(Cuenta cuenta) {
     return negocioTuesteRepository
-        .findByCuentaId(cuenta.getId())
+        .findFirstByCuentaIdOrderByCreadoEnDesc(cuenta.getId())
         .map(n ->
             new TostadorLote(
                 n.getId(), n.getNombre(), n.getCanton(), n.getProvincia(), !n.isEliminado()))

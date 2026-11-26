@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -35,6 +36,18 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, UUID> {
       @Param("tostadorId") UUID tostadorId,
       @Param("desde") Instant desde,
       @Param("hasta") Instant hasta);
+
+  // En bloque para no pisar una aprobación que el cafetalero esté haciendo al mismo tiempo
+  @Modifying
+  @Query(
+      """
+      update Solicitud s
+      set s.estado = com.tuanistack.cranhua.solicitud.EstadoSolicitud.RECHAZADA,
+          s.respondidaEn = :ahora
+      where s.tostador.id = :tostadorId
+        and s.estado = com.tuanistack.cranhua.solicitud.EstadoSolicitud.PENDIENTE
+      """)
+  void rechazarPendientes(@Param("tostadorId") UUID tostadorId, @Param("ahora") Instant ahora);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select s from Solicitud s where s.id = :id")
