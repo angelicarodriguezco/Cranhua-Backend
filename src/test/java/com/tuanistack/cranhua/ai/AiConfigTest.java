@@ -37,16 +37,36 @@ class AiConfigTest {
   }
 
   @Test
-  void chatClientUsaElSystemPromptDeKiana() {
+  void systemPromptIndicaUsarHerramientasYNoInventar() {
+    assertThat(AiConfig.SYSTEM_PROMPT_KIANA)
+        .containsIgnoringCase("herramientas")
+        .containsIgnoringCase("datos reales")
+        .containsIgnoringCase("No inventes");
+  }
+
+  @Test
+  void systemPromptProhibeContactosPreciosPedidosYSolicitudes() {
+    assertThat(AiConfig.SYSTEM_PROMPT_KIANA)
+        .containsIgnoringCase("contactos")
+        .containsIgnoringCase("precios")
+        .containsIgnoringCase("pedidos")
+        .containsIgnoringCase("solicitudes");
+  }
+
+  @Test
+  void chatClientUsaElSystemPromptYLasHerramientasDeKiana() {
     ChatClient.Builder builder = mock(ChatClient.Builder.class);
     ChatMemory chatMemory = mock(ChatMemory.class);
+    KianaHerramientas kianaHerramientas = mock(KianaHerramientas.class);
     ChatClient chatClient = mock(ChatClient.class);
 
     when(builder.defaultSystem(any(String.class))).thenReturn(builder);
     when(builder.defaultAdvisors(any(MessageChatMemoryAdvisor.class))).thenReturn(builder);
+    when(builder.defaultTools(any())).thenReturn(builder);
     when(builder.build()).thenReturn(chatClient);
 
-    assertThat(config.chatClient(builder, chatMemory)).isSameAs(chatClient);
+    assertThat(config.chatClient(builder, chatMemory, kianaHerramientas)).isSameAs(chatClient);
     verify(builder).defaultSystem(eq(AiConfig.SYSTEM_PROMPT_KIANA));
+    verify(builder).defaultTools(kianaHerramientas);
   }
 }

@@ -21,6 +21,23 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
 
   @Query(
       """
+      select c from Cosecha c join fetch c.finca f
+      where c.estado = com.tuanistack.cranhua.finca.EstadoCosecha.PUBLICADA
+        and c.kgDisponibles > 0
+        and f.eliminada = false
+        and (lower(f.provincia) = lower(:provincia) or :provincia is null)
+        and (lower(f.canton) = lower(:canton) or :canton is null)
+        and (lower(f.nombre) like lower(concat('%', :nombre, '%')) or :nombre is null)
+      order by c.creadaEn desc, c.id
+      """)
+  List<Cosecha> buscarActivas(
+      @Param("provincia") String provincia,
+      @Param("canton") String canton,
+      @Param("nombre") String nombre,
+      Pageable pageable);
+
+  @Query(
+      """
       select c from Cosecha c join fetch c.finca f left join fetch c.procesos
       where c.estado = :estado and c.kgDisponibles > 0 and f.eliminada = false
         and not exists (select d from f.duenos d where d.id = :cuentaId)
