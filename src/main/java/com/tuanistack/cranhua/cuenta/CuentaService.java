@@ -1,13 +1,18 @@
 package com.tuanistack.cranhua.cuenta;
 
+import com.tuanistack.cranhua.cafeteria.CafeteriaService;
 import com.tuanistack.cranhua.cuenta.dto.ActualizarCuentaRequest;
 import com.tuanistack.cranhua.cuenta.dto.CuentaResponse;
 import com.tuanistack.cranhua.cuenta.dto.RedSocialRequest;
+import com.tuanistack.cranhua.finca.FincaService;
+import com.tuanistack.cranhua.lote.HistorialTrazabilidadService;
 import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
+import com.tuanistack.cranhua.tueste.NegocioTuesteService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,15 +21,30 @@ public class CuentaService {
 
   private final CuentaRepository cuentaRepository;
   private final AlmacenamientoImagenes almacenamientoImagenes;
+  private final HistorialTrazabilidadService historialTrazabilidadService;
+  private final FincaService fincaService;
+  private final NegocioTuesteService negocioTuesteService;
+  private final CafeteriaService cafeteriaService;
 
   public CuentaService(
-      CuentaRepository cuentaRepository, AlmacenamientoImagenes almacenamientoImagenes) {
+      CuentaRepository cuentaRepository,
+      AlmacenamientoImagenes almacenamientoImagenes,
+      HistorialTrazabilidadService historialTrazabilidadService,
+      FincaService fincaService,
+      NegocioTuesteService negocioTuesteService,
+      CafeteriaService cafeteriaService) {
     this.cuentaRepository = cuentaRepository;
     this.almacenamientoImagenes = almacenamientoImagenes;
+    this.historialTrazabilidadService = historialTrazabilidadService;
+    this.fincaService = fincaService;
+    this.negocioTuesteService = negocioTuesteService;
+    this.cafeteriaService = cafeteriaService;
   }
 
+  @Transactional(readOnly = true)
   public CuentaResponse obtener(UUID id) {
-    return CuentaResponse.de(cargarActiva(id));
+    return CuentaResponse.de(cargarActiva(id))
+        .conHistorial(historialTrazabilidadService.deCuenta(id));
   }
 
   public CuentaResponse actualizar(UUID id, ActualizarCuentaRequest request) {
@@ -59,8 +79,12 @@ public class CuentaService {
     return CuentaResponse.de(cuentaRepository.save(cuenta));
   }
 
+  @Transactional
   public void eliminar(UUID id) {
     Cuenta cuenta = cargarActiva(id);
+    fincaService.eliminarDeCuenta(id);
+    negocioTuesteService.eliminarDeCuenta(id);
+    cafeteriaService.eliminarDeCuenta(id);
     cuenta.eliminar();
     cuentaRepository.save(cuenta);
   }

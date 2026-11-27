@@ -2,6 +2,7 @@ package com.tuanistack.cranhua.tueste;
 
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
+import com.tuanistack.cranhua.lote.HistorialTrazabilidadService;
 import com.tuanistack.cranhua.solicitud.SolicitudRepository;
 import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import com.tuanistack.cranhua.tueste.dto.ActualizarNegocioRequest;
@@ -27,18 +28,21 @@ public class NegocioTuesteService {
   private final TuesteRepository tuesteRepository;
   private final SolicitudRepository solicitudRepository;
   private final AlmacenamientoImagenes almacenamientoImagenes;
+  private final HistorialTrazabilidadService historialTrazabilidadService;
 
   public NegocioTuesteService(
       NegocioTuesteRepository negocioRepository,
       CuentaRepository cuentaRepository,
       TuesteRepository tuesteRepository,
       SolicitudRepository solicitudRepository,
-      AlmacenamientoImagenes almacenamientoImagenes) {
+      AlmacenamientoImagenes almacenamientoImagenes,
+      HistorialTrazabilidadService historialTrazabilidadService) {
     this.negocioRepository = negocioRepository;
     this.cuentaRepository = cuentaRepository;
     this.tuesteRepository = tuesteRepository;
     this.solicitudRepository = solicitudRepository;
     this.almacenamientoImagenes = almacenamientoImagenes;
+    this.historialTrazabilidadService = historialTrazabilidadService;
   }
 
   @Transactional
@@ -64,7 +68,6 @@ public class NegocioTuesteService {
             request.estilos());
     negocio.setDescripcion(enBlancoANull(request.descripcion()));
     negocio.setPortadaUrl(enBlancoANull(request.portadaUrl()));
-    // Dos envíos simultáneos pasan el exists; la restricción única decide
     try {
       negocio = negocioRepository.saveAndFlush(negocio);
     } catch (DataIntegrityViolationException e) {
@@ -82,7 +85,9 @@ public class NegocioTuesteService {
   public NegocioTuesteResponse actual(UUID cuentaId) {
     return negocioRepository
         .findByCuentaIdAndEliminadoFalse(cuentaId)
-        .map(NegocioTuesteResponse::de)
+        .map(negocio ->
+            NegocioTuesteResponse.de(negocio)
+                .conHistorial(historialTrazabilidadService.deTostador(cuentaId)))
         .orElseThrow(() ->
             new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene un negocio registrado."));
@@ -115,10 +120,19 @@ public class NegocioTuesteService {
     return NegocioTuesteResponse.de(negocioRepository.saveAndFlush(negocio));
   }
 
-  // La cuenta sigue activa; los lotes y códigos quedan para la trazabilidad pública
   @Transactional
   public void eliminar(UUID id, UUID cuentaId) {
-    negocioPropio(id, cuentaId).eliminar();
+    eliminar(negocioPropio(id, cuentaId));
+  }
+
+  @Transactional
+  public void eliminarDeCuenta(UUID cuentaId) {
+    negocioRepository.findByCuentaIdAndEliminadoFalse(cuentaId).ifPresent(this::eliminar);
+  }
+
+  private void eliminar(NegocioTueste negocio) {
+    UUID cuentaId = negocio.getCuenta().getId();
+    negocio.eliminar();
     tuesteRepository.retirarDelTostador(cuentaId);
     solicitudRepository.rechazarPendientes(cuentaId, Instant.now());
   }
