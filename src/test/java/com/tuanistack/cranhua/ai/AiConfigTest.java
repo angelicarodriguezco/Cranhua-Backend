@@ -102,8 +102,7 @@ class AiConfigTest {
     assertThat(resource.exists()).isTrue();
 
     String desdeRecurso;
-    try (Reader reader =
-        new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
+    try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
       desdeRecurso = FileCopyUtils.copyToString(reader).trim();
     }
 
