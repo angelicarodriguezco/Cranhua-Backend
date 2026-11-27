@@ -1,6 +1,7 @@
 package com.tuanistack.cranhua.cafeteria;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +14,16 @@ public interface ItemMenuRepository extends JpaRepository<ItemMenu, UUID> {
   long countByCafeteriaIdAndCategoriaAndCodigoTrazabilidadIsNotNull(
       UUID cafeteriaId, CategoriaMenu categoria);
 
-  // Un lote puede tener varios tuestes: gana el que pidió la cafetería y, si no, el más reciente
+  @Query(
+      """
+      select i.codigoTrazabilidad from ItemMenu i
+      where i.cafeteria.id = :cafeteriaId
+        and i.codigoTrazabilidad is not null
+      order by i.creadoEn desc, i.codigoTrazabilidad
+      limit 1
+      """)
+  Optional<String> codigoDelMenu(@Param("cafeteriaId") UUID cafeteriaId);
+
   @Query(
       """
       select i.nombre as nombre, i.categoria as categoria, i.precio as precio,

@@ -1,9 +1,11 @@
 package com.tuanistack.cranhua.cafeteria.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.tuanistack.cranhua.cafeteria.Cafeteria;
 import com.tuanistack.cranhua.cafeteria.VolumenMensual;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
 import com.tuanistack.cranhua.finca.dto.Coordenada;
+import com.tuanistack.cranhua.lote.dto.HistorialTrazabilidad;
 import com.tuanistack.cranhua.tueste.NivelTueste;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +24,8 @@ public record CafeteriaResponse(
     String provincia,
     List<NivelTueste> estilos,
     VolumenMensual volumenMensual,
-    String portadaUrl) {
+    String portadaUrl,
+    @JsonInclude(JsonInclude.Include.NON_NULL) HistorialTrazabilidad historialTrazabilidad) {
 
   public static CafeteriaResponse de(Cafeteria cafeteria) {
     return new CafeteriaResponse(
@@ -39,6 +42,26 @@ public record CafeteriaResponse(
         cafeteria.getProvincia(),
         cafeteria.getEstilos().stream().sorted().toList(),
         cafeteria.getVolumenMensual(),
-        cafeteria.getPortadaUrl());
+        cafeteria.getPortadaUrl(),
+        null);
+  }
+
+  public CafeteriaResponse conHistorial(HistorialTrazabilidad historialTrazabilidad) {
+    return new CafeteriaResponse(
+        id,
+        cuentaId,
+        nombre,
+        nombreContacto,
+        telefono,
+        correo,
+        descripcion,
+        horario,
+        ubicacion,
+        canton,
+        provincia,
+        estilos,
+        volumenMensual,
+        portadaUrl,
+        historialTrazabilidad);
   }
 }

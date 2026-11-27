@@ -21,6 +21,52 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
 
   boolean existsBySolicitudCosechaId(UUID cosechaId);
 
+  @Query(
+      """
+      select l from Lote l
+      join fetch l.solicitud s
+      join fetch s.cosecha c
+      join fetch c.finca
+      join fetch s.tostador
+      where l.codigo = :codigo
+        and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
+      """)
+  Optional<Lote> findActivoParaTrazabilidad(@Param("codigo") String codigo);
+
+  @Query(
+      """
+      select l.codigo from Lote l
+      where l.solicitud.cosecha.finca.id = :fincaId
+        and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
+      order by l.activadoEn desc, l.codigo
+      limit 1
+      """)
+  Optional<String> codigoActivoDeFinca(@Param("fincaId") UUID fincaId);
+
+  @Query(
+      """
+      select l.codigo from Lote l
+      where l.solicitud.tostador.id = :tostadorId
+        and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
+      order by l.activadoEn desc, l.codigo
+      limit 1
+      """)
+  Optional<String> codigoActivoDelTostador(@Param("tostadorId") UUID tostadorId);
+
+  @Query(
+      """
+      select l.codigo from Lote l
+      join l.solicitud s
+      join s.cosecha c
+      join c.finca f
+      where f.eliminada = false
+        and exists (select d from f.duenos d where d.id = :duenoId)
+        and l.estadoTrazabilidad = com.tuanistack.cranhua.lote.EstadoTrazabilidad.ACTIVO
+      order by l.activadoEn desc, l.codigo
+      limit 1
+      """)
+  Optional<String> codigoActivoDeFincasDelDueno(@Param("duenoId") UUID duenoId);
+
   @Query(value = "select nextval('lote_codigo_seq')", nativeQuery = true)
   long siguienteNumeroCodigo();
 

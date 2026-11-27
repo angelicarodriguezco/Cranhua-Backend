@@ -9,12 +9,12 @@ import com.tuanistack.cranhua.finca.GeometriaUtil;
 import com.tuanistack.cranhua.finca.Proceso;
 import com.tuanistack.cranhua.finca.ProcesoReparto;
 import com.tuanistack.cranhua.finca.ZonaCafetalera;
+import com.tuanistack.cranhua.lote.dto.HistorialTrazabilidad;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-// El resumen de cosechas solo viene en GET /api/fincas y la lista de cosechas en GET /{id}
 public record FincaResponse(
     UUID id,
     String nombre,
@@ -28,7 +28,8 @@ public record FincaResponse(
     List<Dueno> duenos,
     @JsonInclude(JsonInclude.Include.NON_NULL) Long cosechasActivas,
     @JsonInclude(JsonInclude.Include.NON_NULL) BigDecimal kgDisponibles,
-    @JsonInclude(JsonInclude.Include.NON_NULL) List<CosechaFinca> cosechas) {
+    @JsonInclude(JsonInclude.Include.NON_NULL) List<CosechaFinca> cosechas,
+    @JsonInclude(JsonInclude.Include.NON_NULL) HistorialTrazabilidad historialTrazabilidad) {
 
   public record Dueno(UUID id, String nombreCompleto) {}
 
@@ -70,6 +71,7 @@ public record FincaResponse(
         duenos(finca),
         null,
         null,
+        null,
         null);
   }
 
@@ -87,6 +89,7 @@ public record FincaResponse(
         duenos,
         cosechasActivas,
         kgDisponibles,
+        null,
         null);
   }
 
@@ -104,10 +107,28 @@ public record FincaResponse(
         duenos,
         null,
         null,
-        cosechas.stream().map(CosechaFinca::de).toList());
+        cosechas.stream().map(CosechaFinca::de).toList(),
+        historialTrazabilidad);
   }
 
-  // Ordenados por nombre para que la respuesta y el mensaje del 409 salgan siempre igual
+  public FincaResponse conHistorial(HistorialTrazabilidad historialTrazabilidad) {
+    return new FincaResponse(
+        id,
+        nombre,
+        descripcion,
+        zonaCafetalera,
+        perimetro,
+        ubicacion,
+        canton,
+        provincia,
+        areaHectareas,
+        duenos,
+        cosechasActivas,
+        kgDisponibles,
+        cosechas,
+        historialTrazabilidad);
+  }
+
   public static List<Dueno> duenos(Finca finca) {
     return finca.getDuenos().stream()
         .sorted(Comparator.comparing(Cuenta::getNombreCompleto).thenComparing(Cuenta::getId))

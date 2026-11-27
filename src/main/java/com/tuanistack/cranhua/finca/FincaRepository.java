@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.locationtech.jts.geom.Polygon;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +21,21 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
   List<Finca> findByDuenosIdAndEliminadaFalseOrderByNombreAscIdAsc(UUID cuentaId);
 
   long countByDuenosIdAndEliminadaFalse(UUID cuentaId);
+
+  @Query(
+      """
+      select f from Finca f
+      where f.eliminada = false
+        and (lower(f.provincia) = lower(:provincia) or :provincia is null)
+        and (lower(f.canton) = lower(:canton) or :canton is null)
+        and (lower(f.nombre) like lower(concat('%', :nombre, '%')) or :nombre is null)
+      order by f.nombre, f.id
+      """)
+  List<Finca> buscarActivas(
+      @Param("provincia") String provincia,
+      @Param("canton") String canton,
+      @Param("nombre") String nombre,
+      Pageable pageable);
 
   @Query(
       value =

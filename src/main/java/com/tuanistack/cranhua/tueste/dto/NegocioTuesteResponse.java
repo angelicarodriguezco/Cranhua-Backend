@@ -1,5 +1,7 @@
 package com.tuanistack.cranhua.tueste.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.tuanistack.cranhua.lote.dto.HistorialTrazabilidad;
 import com.tuanistack.cranhua.tueste.NegocioTueste;
 import com.tuanistack.cranhua.tueste.NivelTueste;
 import java.util.List;
@@ -16,7 +18,8 @@ public record NegocioTuesteResponse(
     String canton,
     String provincia,
     List<NivelTueste> estilos,
-    String portadaUrl) {
+    String portadaUrl,
+    @JsonInclude(JsonInclude.Include.NON_NULL) HistorialTrazabilidad historialTrazabilidad) {
 
   public static NegocioTuesteResponse de(NegocioTueste negocio) {
     return new NegocioTuesteResponse(
@@ -30,6 +33,23 @@ public record NegocioTuesteResponse(
         negocio.getCanton(),
         negocio.getProvincia(),
         negocio.getEstilos().stream().sorted().toList(),
-        negocio.getPortadaUrl());
+        negocio.getPortadaUrl(),
+        null);
+  }
+
+  public NegocioTuesteResponse conHistorial(HistorialTrazabilidad historialTrazabilidad) {
+    return new NegocioTuesteResponse(
+        id,
+        cuentaId,
+        nombre,
+        nombreContacto,
+        telefono,
+        correo,
+        descripcion,
+        canton,
+        provincia,
+        estilos,
+        portadaUrl,
+        historialTrazabilidad);
   }
 }
