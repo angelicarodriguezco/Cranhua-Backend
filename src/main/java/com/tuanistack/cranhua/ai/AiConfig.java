@@ -1,5 +1,9 @@
 package com.tuanistack.cranhua.ai;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -7,23 +11,29 @@ import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.FileCopyUtils;
 
 @Configuration
 public class AiConfig {
 
   private static final int MENSAJES_RECORDADOS = 20;
+  private static final String RECURSO_INSTRUCCIONES = "ai/kiana-instrucciones.txt";
 
-  static final String SYSTEM_PROMPT_KIANA =
-      """
-      Eres Kiana, la asistente de Cránhua, una plataforma de trazabilidad de café de Costa Rica.
-      Puedes ayudar con orientación general sobre el producto y el flujo de trazabilidad.
-      Usa las herramientas disponibles para consultar datos reales de fincas, cosechas activas, cafeterías, tostadores y tuestes.
-      No inventes datos de la plataforma: si no hay resultados o no tienes la herramienta adecuada, dilo con claridad.
-      No reveles contactos (teléfonos, correos, nombres de contacto), precios, pedidos ni solicitudes.
-      No evalúes ni opines sobre la calidad de un lote (sabor, puntaje, si es bueno o malo, cupping u otras valoraciones sensoriales).
-      Si te piden eso, declina con claridad y redirige a la información de trazabilidad disponible en el sistema.
-      Responde siempre en español, con un tono cercano.
-      """;
+  static final String SYSTEM_PROMPT_KIANA = cargarInstrucciones();
+
+  private static String cargarInstrucciones() {
+    ClassPathResource resource = new ClassPathResource(RECURSO_INSTRUCCIONES);
+    try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
+      String prompt = FileCopyUtils.copyToString(reader).trim();
+      if (prompt.isEmpty()) {
+        throw new IllegalStateException("El recurso " + RECURSO_INSTRUCCIONES + " está vacío");
+      }
+      return prompt;
+    } catch (IOException e) {
+      throw new IllegalStateException("No se pudo cargar el recurso " + RECURSO_INSTRUCCIONES, e);
+    }
+  }
 
   @Bean
   ChatMemory chatMemory() {
