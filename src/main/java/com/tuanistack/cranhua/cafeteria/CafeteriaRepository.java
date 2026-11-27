@@ -33,14 +33,14 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
       Pageable pageable);
 
   @Query(
-    value =
-        """
-        select id, nombre, canton, provincia, ST_Y(ubicacion) as lat, ST_X(ubicacion) as lng
-        from cafeteria
-        where eliminada = false
-        order by nombre, id
-        """,
-    nativeQuery = true)
+      value =
+          """
+          select id, nombre, canton, provincia, ST_Y(ubicacion) as lat, ST_X(ubicacion) as lng
+          from cafeteria
+          where eliminada = false
+          order by nombre, id
+          """,
+      nativeQuery = true)
   List<PuntoMapa> puntosMapa();
 
   @Query(

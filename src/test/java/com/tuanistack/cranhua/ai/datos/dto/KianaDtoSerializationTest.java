@@ -74,11 +74,7 @@ class KianaDtoSerializationTest {
   void tostadorNoExponeTelefonoCorreoNiContacto() throws Exception {
     assertSinCamposSensibles(
         new TostadorKianaDto(
-            "Tueste Volcán",
-            "Perfiles claros",
-            "Naranjo",
-            "Alajuela",
-            Set.of(NivelTueste.CLARO)));
+            "Tueste Volcán", "Perfiles claros", "Naranjo", "Alajuela", Set.of(NivelTueste.CLARO)));
   }
 
   @Test

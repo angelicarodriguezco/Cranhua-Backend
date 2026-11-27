@@ -78,10 +78,7 @@ class KianaDatosServiceTest {
         "Guanacaste",
         GeometriaUtil.punto(new Coordenada(10.6346, -85.4375)));
     cafeteria(
-        "Café Escazú",
-        "Escazú",
-        "San José",
-        GeometriaUtil.punto(new Coordenada(9.9205, -84.137)));
+        "Café Escazú", "Escazú", "San José", GeometriaUtil.punto(new Coordenada(9.9205, -84.137)));
     Cafeteria eliminada =
         cafeteria(
             "Café Borrada",
@@ -126,7 +123,9 @@ class KianaDatosServiceTest {
     assertThat(resultado)
         .extracting(CosechaActivaKianaDto::finca)
         .containsExactly("Finca Guanacaste");
-    assertThat(resultado).extracting(CosechaActivaKianaDto::codigoLote).containsExactly("CRH-2026-9101");
+    assertThat(resultado)
+        .extracting(CosechaActivaKianaDto::codigoLote)
+        .containsExactly("CRH-2026-9101");
   }
 
   @Test
@@ -173,10 +172,14 @@ class KianaDatosServiceTest {
             Set.of(NivelTueste.MEDIO)));
   }
 
-  private Finca finca(
-      String nombre, String canton, String provincia, double lat, double lng) {
+  private Finca finca(String nombre, String canton, String provincia, double lat, double lng) {
     return fincaRepository.saveAndFlush(
-        new Finca(nombre, perimetro(lat, lng), GeometriaUtil.punto(new Coordenada(lat, lng)), canton, provincia));
+        new Finca(
+            nombre,
+            perimetro(lat, lng),
+            GeometriaUtil.punto(new Coordenada(lat, lng)),
+            canton,
+            provincia));
   }
 
   private Cosecha cosechaActiva(Finca finca, String variedad, String codigo) {
