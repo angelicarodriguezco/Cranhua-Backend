@@ -6,6 +6,7 @@ import com.tuanistack.cranhua.cafeteria.dto.RegistrarCafeteriaRequest;
 import com.tuanistack.cranhua.cuenta.Cuenta;
 import com.tuanistack.cranhua.cuenta.CuentaRepository;
 import com.tuanistack.cranhua.finca.GeometriaUtil;
+import com.tuanistack.cranhua.lote.HistorialTrazabilidadService;
 import com.tuanistack.cranhua.pedido.PedidoRepository;
 import com.tuanistack.cranhua.storage.AlmacenamientoImagenes;
 import java.time.Instant;
@@ -27,16 +28,19 @@ public class CafeteriaService {
   private final CuentaRepository cuentaRepository;
   private final PedidoRepository pedidoRepository;
   private final AlmacenamientoImagenes almacenamientoImagenes;
+  private final HistorialTrazabilidadService historialTrazabilidadService;
 
   public CafeteriaService(
       CafeteriaRepository cafeteriaRepository,
       CuentaRepository cuentaRepository,
       PedidoRepository pedidoRepository,
-      AlmacenamientoImagenes almacenamientoImagenes) {
+      AlmacenamientoImagenes almacenamientoImagenes,
+      HistorialTrazabilidadService historialTrazabilidadService) {
     this.cafeteriaRepository = cafeteriaRepository;
     this.cuentaRepository = cuentaRepository;
     this.pedidoRepository = pedidoRepository;
     this.almacenamientoImagenes = almacenamientoImagenes;
+    this.historialTrazabilidadService = historialTrazabilidadService;
   }
 
   @Transactional
@@ -75,14 +79,14 @@ public class CafeteriaService {
 
   @Transactional(readOnly = true)
   public CafeteriaResponse obtener(UUID id, UUID cuentaId) {
-    return CafeteriaResponse.de(cafeteriaPropia(id, cuentaId));
+    return detalle(cafeteriaPropia(id, cuentaId));
   }
 
   @Transactional(readOnly = true)
   public CafeteriaResponse actual(UUID cuentaId) {
     return cafeteriaRepository
         .findByCuentaIdAndEliminadaFalse(cuentaId)
-        .map(CafeteriaResponse::de)
+        .map(this::detalle)
         .orElseThrow(() ->
             new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Tu cuenta todavía no tiene una cafetería registrada."));
@@ -119,12 +123,24 @@ public class CafeteriaService {
     return CafeteriaResponse.de(cafeteriaRepository.saveAndFlush(cafeteria));
   }
 
-  // La cuenta sigue activa; el menú se conserva pero deja de mostrarse
   @Transactional
   public void eliminar(UUID id, UUID cuentaId) {
-    Cafeteria cafeteria = cafeteriaPropia(id, cuentaId);
+    eliminar(cafeteriaPropia(id, cuentaId));
+  }
+
+  @Transactional
+  public void eliminarDeCuenta(UUID cuentaId) {
+    cafeteriaRepository.findByCuentaIdAndEliminadaFalse(cuentaId).ifPresent(this::eliminar);
+  }
+
+  private void eliminar(Cafeteria cafeteria) {
     cafeteria.eliminar();
     pedidoRepository.cancelarEnCamino(cafeteria.getId(), Instant.now());
+  }
+
+  private CafeteriaResponse detalle(Cafeteria cafeteria) {
+    return CafeteriaResponse.de(cafeteria)
+        .conHistorial(historialTrazabilidadService.deCafeteria(cafeteria.getId()));
   }
 
   public Cafeteria cafeteriaPropia(UUID id, UUID cuentaId) {
