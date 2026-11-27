@@ -4,6 +4,7 @@ import com.tuanistack.cranhua.mapa.PuntoMapa;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,17 +18,31 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
   boolean existsByCuentaIdAndEliminadaFalse(UUID cuentaId);
 
   @Query(
-      value =
-          """
-          select id, nombre, canton, provincia, ST_Y(ubicacion) as lat, ST_X(ubicacion) as lng
-          from cafeteria
-          where eliminada = false
-          order by nombre, id
-          """,
-      nativeQuery = true)
+      """
+      select c from Cafeteria c
+      where c.eliminada = false
+        and (lower(c.provincia) = lower(:provincia) or :provincia is null)
+        and (lower(c.canton) = lower(:canton) or :canton is null)
+        and (lower(c.nombre) like lower(concat('%', :nombre, '%')) or :nombre is null)
+      order by c.nombre, c.id
+      """)
+  List<Cafeteria> buscarActivas(
+      @Param("provincia") String provincia,
+      @Param("canton") String canton,
+      @Param("nombre") String nombre,
+      Pageable pageable);
+
+  @Query(
+    value =
+        """
+        select id, nombre, canton, provincia, ST_Y(ubicacion) as lat, ST_X(ubicacion) as lng
+        from cafeteria
+        where eliminada = false
+        order by nombre, id
+        """,
+    nativeQuery = true)
   List<PuntoMapa> puntosMapa();
 
-  // Cafeterías activas con al menos un café del menú cuyo código viene de la finca
   @Query(
       """
       select distinct c from ItemMenu i

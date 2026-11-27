@@ -4,8 +4,10 @@ import com.tuanistack.cranhua.mapa.PuntoMapa;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface NegocioTuesteRepository extends JpaRepository<NegocioTueste, UUID> {
 
@@ -16,6 +18,21 @@ public interface NegocioTuesteRepository extends JpaRepository<NegocioTueste, UU
   Optional<NegocioTueste> findByCuentaId(UUID cuentaId);
 
   boolean existsByCuentaId(UUID cuentaId);
+
+  @Query(
+      """
+      select n from NegocioTueste n
+      where n.eliminado = false
+        and (lower(n.provincia) = lower(:provincia) or :provincia is null)
+        and (lower(n.canton) = lower(:canton) or :canton is null)
+        and (lower(n.nombre) like lower(concat('%', :nombre, '%')) or :nombre is null)
+      order by n.nombre, n.id
+      """)
+  List<NegocioTueste> buscarActivos(
+      @Param("provincia") String provincia,
+      @Param("canton") String canton,
+      @Param("nombre") String nombre,
+      Pageable pageable);
 
   @Query(
       """
