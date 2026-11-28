@@ -1,0 +1,334 @@
+{
+  "info": {
+    "name": "Cranhua - Seguridad (CP3-120)",
+    "description": "Casos manuales de docs/seguridad/verificacion-CT.md. Llenar las variables con cuentas de prueba locales, nunca con datos reales. Correr primero la carpeta Sesiones: guarda cada cookie en una variable y los demás pedidos la mandan en el header Cookie. Para los casos sin sesión, desactivar el cookie jar de Postman o borrar las cookies de localhost.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "fincaId", "value": "" },
+    { "key": "cosechaId", "value": "" },
+    { "key": "loteId", "value": "" },
+    { "key": "cafeteriaId", "value": "" },
+    { "key": "correoCafetalero", "value": "" },
+    { "key": "contrasenaCafetalero", "value": "" },
+    { "key": "correoTostador", "value": "" },
+    { "key": "contrasenaTostador", "value": "" },
+    { "key": "correoCafeteria", "value": "" },
+    { "key": "contrasenaCafeteria", "value": "" },
+    { "key": "sesionCafetalero", "value": "" },
+    { "key": "sesionTostador", "value": "" },
+    { "key": "sesionCafeteria", "value": "" },
+    { "key": "perimetroFinca", "value": "" },
+    { "key": "ubicacionFinca", "value": "" },
+    { "key": "codigoLote", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Sesiones",
+      "item": [
+        {
+          "name": "Iniciar sesión cafetalero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const m = (pm.response.headers.get('Set-Cookie') || '').match(/cranhua_sesion=([^;]+)/);",
+                  "pm.test('devuelve la cookie de sesión', () => pm.expect(m).to.not.be.null);",
+                  "pm.collectionVariables.set('sesionCafetalero', m[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"correo\": \"{{correoCafetalero}}\", \"contrasena\": \"{{contrasenaCafetalero}}\"}"
+            },
+            "url": "{{baseUrl}}/api/auth/iniciarSesion"
+          }
+        },
+        {
+          "name": "Iniciar sesión tostador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const m = (pm.response.headers.get('Set-Cookie') || '').match(/cranhua_sesion=([^;]+)/);",
+                  "pm.test('devuelve la cookie de sesión', () => pm.expect(m).to.not.be.null);",
+                  "pm.collectionVariables.set('sesionTostador', m[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"correo\": \"{{correoTostador}}\", \"contrasena\": \"{{contrasenaTostador}}\"}"
+            },
+            "url": "{{baseUrl}}/api/auth/iniciarSesion"
+          }
+        },
+        {
+          "name": "Iniciar sesión cafetería",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const m = (pm.response.headers.get('Set-Cookie') || '').match(/cranhua_sesion=([^;]+)/);",
+                  "pm.test('devuelve la cookie de sesión', () => pm.expect(m).to.not.be.null);",
+                  "pm.collectionVariables.set('sesionCafeteria', m[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"correo\": \"{{correoCafeteria}}\", \"contrasena\": \"{{contrasenaCafeteria}}\"}"
+            },
+            "url": "{{baseUrl}}/api/auth/iniciarSesion"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CT-01 Permisos por rol",
+      "item": [
+        {
+          "name": "Cafetalero: GET /api/fincas sin cookie da 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/fincas" }
+        },
+        {
+          "name": "Cafetalero: GET /api/fincas con cookie de tostador da 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionTostador}}" }],
+            "url": "{{baseUrl}}/api/fincas"
+          }
+        },
+        {
+          "name": "Tostador: GET /api/lotes sin cookie da 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/lotes" }
+        },
+        {
+          "name": "Tostador: GET /api/lotes con cookie de cafetería da 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionCafeteria}}" }],
+            "url": "{{baseUrl}}/api/lotes"
+          }
+        },
+        {
+          "name": "Cafetería: GET /api/pedidos sin cookie da 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos" }
+        },
+        {
+          "name": "Cafetería: GET /api/pedidos con cookie de cafetalero da 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionCafetalero}}" }],
+            "url": "{{baseUrl}}/api/pedidos"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CT-04 CORS",
+      "item": [
+        {
+          "name": "GET /api/cuenta con Origin ajeno da 403 sin Access-Control-Allow-Origin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));",
+                  "pm.test('sin Access-Control-Allow-Origin', () => pm.expect(pm.response.headers.has('Access-Control-Allow-Origin')).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Origin", "value": "http://evil.example" },
+              { "key": "Cookie", "value": "cranhua_sesion={{sesionCafetalero}}" }
+            ],
+            "url": "{{baseUrl}}/api/cuenta"
+          }
+        }
+      ]
+    },
+    {
+      "name": "CT-05 Evadir el frontend",
+      "item": [
+        {
+          "name": "Traslape 1/2: leer el perímetro de {{fincaId}}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('perimetroFinca', JSON.stringify(pm.response.json().perimetro));",
+                  "pm.collectionVariables.set('ubicacionFinca', JSON.stringify(pm.response.json().ubicacion));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionCafetalero}}" }],
+            "url": "{{baseUrl}}/api/fincas/{{fincaId}}"
+          }
+        },
+        {
+          "name": "Traslape 2/2: POST /api/fincas con el mismo perímetro da 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('409', () => pm.response.to.have.status(409));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "cranhua_sesion={{sesionCafetalero}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"Finca Traslape\", \"perimetro\": {{perimetroFinca}}, \"ubicacion\": {{ubicacionFinca}}, \"canton\": \"Tarrazú\", \"provincia\": \"San José\"}"
+            },
+            "url": "{{baseUrl}}/api/fincas"
+          }
+        },
+        {
+          "name": "Cantidad de más: POST /api/solicitudes con más kg que los disponibles da 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "cranhua_sesion={{sesionTostador}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"cosechaId\": \"{{cosechaId}}\", \"cantidadKg\": 99999999}"
+            },
+            "url": "{{baseUrl}}/api/solicitudes"
+          }
+        },
+        {
+          "name": "Código repetido 1/3: activar el código de {{loteId}}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('codigoLote', pm.response.json().codigo);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionTostador}}" }],
+            "url": "{{baseUrl}}/api/lotes/{{loteId}}/codigo"
+          }
+        },
+        {
+          "name": "Código repetido 2/3: activarlo otra vez no cambia el código",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('mismo código', () => pm.expect(pm.response.json().codigo).to.eql(pm.collectionVariables.get('codigoLote')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Cookie", "value": "cranhua_sesion={{sesionTostador}}" }],
+            "url": "{{baseUrl}}/api/lotes/{{loteId}}/codigo"
+          }
+        },
+        {
+          "name": "Código repetido 3/3: publicar en el menú un código inexistente da 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('404', () => pm.response.to.have.status(404));"] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "cranhua_sesion={{sesionCafeteria}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nombre\": \"Espresso\", \"categoria\": \"CAFE\", \"codigoTrazabilidad\": \"CRH-0000-0000\", \"precio\": 1800}"
+            },
+            "url": "{{baseUrl}}/api/cafeterias/{{cafeteriaId}}/menu"
+          }
+        }
+      ]
+    }
+  ]
+}

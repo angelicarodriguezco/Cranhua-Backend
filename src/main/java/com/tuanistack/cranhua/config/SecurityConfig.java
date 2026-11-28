@@ -33,7 +33,7 @@ public class SecurityConfig {
   private static final PathPatternRequestMatcher.Builder RUTA =
       PathPatternRequestMatcher.withDefaults();
 
-  private static final RequestMatcher RUTAS_PUBLICAS =
+  static final RequestMatcher RUTAS_PUBLICAS =
       new OrRequestMatcher(
           RUTA.matcher(HttpMethod.OPTIONS, "/**"),
           RUTA.matcher(HttpMethod.GET, "/actuator/health"),

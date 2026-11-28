@@ -41,6 +41,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -72,6 +73,8 @@ class AuthControllerTest {
   @Autowired private JwtEncoder jwtEncoder;
 
   @Autowired private JwtDecoder jwtDecoder;
+
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @MockitoBean private VerificadorGoogle verificadorGoogle;
 
@@ -543,6 +546,78 @@ class AuthControllerTest {
     assertThat(resultado.getResponse().getStatus()).isEqualTo(401);
     assertThat(resultado.getResponse().getContentAsString())
         .contains("No se pudo verificar la cuenta de Google.");
+  }
+
+  @Test
+  void registroDevuelveLaCookieHttpOnlySecureYStrict() throws Exception {
+    MvcResult resultado = registrar(registroValido("rodrigo@ejemplo.cr", "[\"CAFETALERO\"]"));
+
+    assertThat(resultado.getResponse().getStatus()).isEqualTo(201);
+    assertThat(resultado.getResponse().getHeader(HttpHeaders.SET_COOKIE))
+        .startsWith(CookieSesion.NOMBRE + "=")
+        .contains("Path=/", "HttpOnly", "Secure", "SameSite=Strict");
+  }
+
+  @Test
+  void elTokenSoloVaEnLaCookieYNoEnElCuerpo() throws Exception {
+    MvcResult registro = registrar(registroValido("rodrigo@ejemplo.cr", "[\"CAFETALERO\"]"));
+    MvcResult login = iniciarSesion("rodrigo@ejemplo.cr", "Cafe2026!");
+    Cookie sesion = cookieDe(login);
+    MvcResult cuenta = mockMvc.perform(get("/api/cuenta").cookie(sesion)).andReturn();
+
+    for (MvcResult resultado : List.of(registro, login, cuenta)) {
+      assertThat(resultado.getResponse().getContentAsString())
+          .doesNotContain(cookieDe(registro).getValue(), sesion.getValue())
+          .doesNotContainIgnoringCase("token");
+    }
+  }
+
+  @Test
+  void elTokenDeGoogleTampocoVaEnElCuerpo() throws Exception {
+    guardarCuentaGoogle("andres.solano@gmail.com", "google-sub-123");
+    googleDevuelve("token-valido", "google-sub-123", "andres.solano@gmail.com");
+
+    MvcResult resultado = iniciarSesionConGoogle("token-valido");
+
+    assertThat(resultado.getResponse().getContentAsString())
+        .doesNotContain(cookieDe(resultado).getValue())
+        .doesNotContainIgnoringCase("token");
+  }
+
+  @Test
+  void laContrasenaSeGuardaConBcryptEnLaBase() throws Exception {
+    registrar(registroValido("rodrigo@ejemplo.cr", "[\"CAFETALERO\"]"));
+
+    String guardada =
+        jdbcTemplate.queryForObject(
+            "select contrasena_hash from cuenta where correo = ?",
+            String.class,
+            "rodrigo@ejemplo.cr");
+
+    assertThat(guardada).isNotEqualTo("Cafe2026!").matches("^\\$2[aby]\\$\\d{2}\\$.{53}$");
+    assertThat(passwordEncoder.matches("Cafe2026!", guardada)).isTrue();
+  }
+
+  @Test
+  void laCuentaNoDevuelveLaContrasenaNiElHash() throws Exception {
+    Cookie sesion = cookieDe(registrar(registroValido("rodrigo@ejemplo.cr", "[\"CAFETALERO\"]")));
+    String hash =
+        cuentaRepository
+            .findByCorreoAndEliminadaFalse("rodrigo@ejemplo.cr")
+            .get()
+            .getContrasenaHash();
+
+    String cuerpo =
+        mockMvc
+            .perform(get("/api/cuenta").cookie(sesion))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(cuerpo).isNotBlank().doesNotContain(hash, "Cafe2026!", "$2a$");
+    assertThat(cuerpo)
+        .doesNotContainIgnoringCase("contrasena")
+        .doesNotContainIgnoringCase("password");
   }
 
   @Test
