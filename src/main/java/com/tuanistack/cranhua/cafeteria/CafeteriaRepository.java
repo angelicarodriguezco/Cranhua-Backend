@@ -50,7 +50,7 @@ public interface CafeteriaRepository extends JpaRepository<Cafeteria, UUID> {
       left join Lote l on l.codigo = i.codigoTrazabilidad
       left join l.solicitud s
       join Cosecha co on co = s.cosecha
-        or (l.id is null and co.codigoLote = i.codigoTrazabilidad)
+        or (l.id is null and co.codigoLote = i.codigoTrazabilidad and co.eliminada = false)
       where co.finca.id = :fincaId and c.eliminada = false
       order by c.nombre
       """)

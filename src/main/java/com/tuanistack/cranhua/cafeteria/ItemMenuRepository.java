@@ -42,7 +42,7 @@ public interface ItemMenuRepository extends JpaRepository<ItemMenu, UUID> {
       left join Lote l on l.codigo = i.codigoTrazabilidad
       left join l.solicitud s
       left join Cosecha co on co = s.cosecha
-        or (l.id is null and co.codigoLote = i.codigoTrazabilidad)
+        or (l.id is null and co.codigoLote = i.codigoTrazabilidad and co.eliminada = false)
       left join co.finca f on f.eliminada = false
       where i.cafeteria.id = :cafeteriaId
       order by i.nombre, i.id

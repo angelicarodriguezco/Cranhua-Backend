@@ -69,7 +69,7 @@ class CosechaRepositoryTest {
     assertThat(leida.getProcesos())
         .extracting(ProcesoReparto::getProceso, ProcesoReparto::getPorcentaje)
         .containsExactlyInAnyOrder(tuple(Proceso.RED_HONEY, 60), tuple(Proceso.ANAEROBICO, 40));
-    assertThat(cosechaRepository.findByFincaId(finca.getId())).hasSize(1);
+    assertThat(cosechaRepository.findByFincaIdAndEliminadaFalse(finca.getId())).hasSize(1);
   }
 
   @Test

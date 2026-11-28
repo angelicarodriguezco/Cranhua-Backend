@@ -15,15 +15,16 @@ import org.springframework.data.repository.query.Param;
 
 public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
 
-  List<Cosecha> findByFincaId(UUID fincaId);
+  List<Cosecha> findByFincaIdAndEliminadaFalse(UUID fincaId);
 
-  List<Cosecha> findByFincaIdOrderByFechaInicioDescIdAsc(UUID fincaId);
+  List<Cosecha> findByFincaIdAndEliminadaFalseOrderByFechaInicioDescIdAsc(UUID fincaId);
 
   @Query(
       """
       select c from Cosecha c join fetch c.finca f
       where c.estado = com.tuanistack.cranhua.finca.EstadoCosecha.PUBLICADA
         and c.kgDisponibles > 0
+        and c.eliminada = false
         and f.eliminada = false
         and (lower(f.provincia) = lower(:provincia) or :provincia is null)
         and (lower(f.canton) = lower(:canton) or :canton is null)
@@ -39,7 +40,8 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
   @Query(
       """
       select c from Cosecha c join fetch c.finca f left join fetch c.procesos
-      where c.estado = :estado and c.kgDisponibles > 0 and f.eliminada = false
+      where c.estado = :estado and c.kgDisponibles > 0
+        and c.eliminada = false and f.eliminada = false
         and not exists (select d from f.duenos d where d.id = :cuentaId)
       order by c.creadaEn desc, c.id
       """)
@@ -50,6 +52,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
       """
       select c.finca.id, count(c), sum(c.kgDisponibles) from Cosecha c
       where c.finca.id in :fincaIds and c.estado = :estado and c.kgDisponibles > 0
+        and c.eliminada = false
       group by c.finca.id
       """)
   List<Object[]> resumenDisponibles(
@@ -62,7 +65,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
   @Query(
       """
       select count(c) from Cosecha c join c.finca f
-      where c.estado = :estado and f.eliminada = false
+      where c.estado = :estado and c.eliminada = false and f.eliminada = false
         and exists (select d from f.duenos d where d.id = :duenoId)
       """)
   long contarDelDueno(@Param("duenoId") UUID duenoId, @Param("estado") EstadoCosecha estado);
@@ -70,7 +73,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
   @Query(
       """
       select coalesce(sum(c.kgDisponibles), 0) from Cosecha c join c.finca f
-      where c.estado = :estado and f.eliminada = false
+      where c.estado = :estado and c.eliminada = false and f.eliminada = false
         and exists (select d from f.duenos d where d.id = :duenoId)
       """)
   BigDecimal kgDisponiblesDelDueno(
@@ -79,7 +82,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
   @Query(
       """
       select c from Cosecha c join fetch c.finca f
-      where f.eliminada = false
+      where c.eliminada = false and f.eliminada = false
         and exists (select d from f.duenos d where d.id = :duenoId)
       order by c.creadaEn desc, c.id
       """)
@@ -89,7 +92,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
       value =
           """
           select c from Cosecha c join fetch c.finca f
-          where f.eliminada = false
+          where c.eliminada = false and f.eliminada = false
             and exists (select d from f.duenos d where d.id = :duenoId)
             and (:fincaId is null or f.id = :fincaId)
             and c.fechaInicio between :desde and :hasta
@@ -98,7 +101,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
       countQuery =
           """
           select count(c) from Cosecha c join c.finca f
-          where f.eliminada = false
+          where c.eliminada = false and f.eliminada = false
             and exists (select d from f.duenos d where d.id = :duenoId)
             and (:fincaId is null or f.id = :fincaId)
             and c.fechaInicio between :desde and :hasta
@@ -113,7 +116,7 @@ public interface CosechaRepository extends JpaRepository<Cosecha, UUID> {
   @Query(
       """
       select coalesce(sum(c.cantidadCosechadaKg), 0) from Cosecha c join c.finca f
-      where f.eliminada = false
+      where c.eliminada = false and f.eliminada = false
         and exists (select d from f.duenos d where d.id = :duenoId)
         and (:fincaId is null or f.id = :fincaId)
         and c.fechaInicio between :desde and :hasta

@@ -19,6 +19,8 @@ public interface LoteRepository extends JpaRepository<Lote, UUID> {
 
   long countBySolicitudTostadorId(UUID tostadorId);
 
+  boolean existsBySolicitudCosechaId(UUID cosechaId);
+
   @Query(
       """
       select l from Lote l

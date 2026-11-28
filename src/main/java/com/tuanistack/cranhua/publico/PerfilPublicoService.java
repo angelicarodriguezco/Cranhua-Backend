@@ -59,7 +59,8 @@ public class PerfilPublicoService {
         fincaRepository
             .findByIdAndEliminadaFalse(id)
             .orElseThrow(() -> noEncontrado("No encontramos esa finca."));
-    List<Cosecha> cosechas = cosechaRepository.findByFincaIdOrderByFechaInicioDescIdAsc(id);
+    List<Cosecha> cosechas =
+        cosechaRepository.findByFincaIdAndEliminadaFalseOrderByFechaInicioDescIdAsc(id);
 
     return new PerfilFincaPublicoResponse(
         finca.getId(),

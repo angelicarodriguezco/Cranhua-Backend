@@ -83,6 +83,12 @@ public class Cosecha {
   @Column(name = "creada_en", nullable = false, updatable = false)
   private Instant creadaEn;
 
+  @Column(nullable = false)
+  private boolean eliminada = false;
+
+  @Column(name = "eliminada_en")
+  private Instant eliminadaEn;
+
   @ElementCollection
   @CollectionTable(name = "cosecha_proceso", joinColumns = @JoinColumn(name = "cosecha_id"))
   private List<ProcesoReparto> procesos = new ArrayList<>();
@@ -129,9 +135,19 @@ public class Cosecha {
     this.procesos.addAll(procesos);
   }
 
+  // Sin peso tras selección no hay kg que ofrecer, así que deja de estar publicada
   public void registrarPesoTrasSeleccion(BigDecimal kg) {
     pesoTrasSeleccionKg = kg;
     kgDisponibles = kg;
+    if (kg == null && estado == EstadoCosecha.PUBLICADA) {
+      estado = EstadoCosecha.BORRADOR;
+    }
+  }
+
+  // Borrado lógico: se conserva para la trazabilidad
+  public void eliminar() {
+    eliminada = true;
+    eliminadaEn = Instant.now();
   }
 
   public void publicar() {
@@ -289,6 +305,14 @@ public class Cosecha {
 
   public Instant getCreadaEn() {
     return creadaEn;
+  }
+
+  public boolean isEliminada() {
+    return eliminada;
+  }
+
+  public Instant getEliminadaEn() {
+    return eliminadaEn;
   }
 
   public List<ProcesoReparto> getProcesos() {

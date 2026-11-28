@@ -165,7 +165,7 @@ class FincaRepositoryTest {
     Finca leida = fincaRepository.findById(finca.getId()).orElseThrow();
     assertThat(leida.isEliminada()).isTrue();
     assertThat(leida.getEliminadaEn()).isNotNull();
-    assertThat(cosechaRepository.findByFincaId(finca.getId())).hasSize(1);
+    assertThat(cosechaRepository.findByFincaIdAndEliminadaFalse(finca.getId())).hasSize(1);
   }
 
   @Test

@@ -107,7 +107,7 @@ class KianaDatosServiceTest {
   }
 
   @Test
-  void listarCosechasActivasExcluyeFincaEliminadaYFiltraPorGuanacaste() {
+  void listarCosechasActivasExcluyeEliminadasYFiltraPorGuanacaste() {
     Finca guanacaste = finca("Finca Guanacaste", "Liberia", "Guanacaste", 10.63, -85.44);
     Finca sanJose = finca("Finca Tarrazú", "Tarrazú", "San José", 9.66, -84.02);
     Finca eliminada = finca("Finca Borrada", "Nicoya", "Guanacaste", 10.14, -85.45);
@@ -115,6 +115,9 @@ class KianaDatosServiceTest {
     cosechaActiva(guanacaste, "Geisha", "CRH-2026-9101");
     cosechaActiva(sanJose, "Caturra", "CRH-2026-9102");
     cosechaActiva(eliminada, "Typica", "CRH-2026-9103");
+    Cosecha cosechaEliminada = cosechaActiva(guanacaste, "Bourbon", "CRH-2026-9104");
+    cosechaEliminada.eliminar();
+    cosechaRepository.saveAndFlush(cosechaEliminada);
     eliminada.eliminar();
     fincaRepository.saveAndFlush(eliminada);
 

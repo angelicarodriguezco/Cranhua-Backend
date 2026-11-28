@@ -43,7 +43,7 @@ public class SolicitudService {
     Cosecha cosecha =
         cosechaRepository
             .findById(request.cosechaId())
-            .filter(c -> !c.getFinca().isEliminada())
+            .filter(c -> !c.isEliminada() && !c.getFinca().isEliminada())
             .orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa cosecha."));
 
@@ -85,7 +85,7 @@ public class SolicitudService {
                 new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa solicitud."));
     // También se bloquea la cosecha: otras solicitudes aprobadas a la vez descuentan de ella
     Cosecha cosecha = cosechaRepository.findParaDescontar(solicitud.getCosecha().getId());
-    if (cosecha.getFinca().isEliminada()) {
+    if (cosecha.isEliminada() || cosecha.getFinca().isEliminada()) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa solicitud.");
     }
     if (!cosecha.getFinca().esDueno(cuentaId)) {
@@ -116,5 +116,12 @@ public class SolicitudService {
             Year.now(COSTA_RICA).getValue(), loteRepository.siguienteNumeroCodigo());
     Lote lote = loteRepository.save(new Lote(solicitud, codigo));
     return SolicitudResponse.de(solicitud, lote.getCodigo());
+  }
+
+  @Transactional
+  public void rechazarPendientesDe(UUID cosechaId) {
+    solicitudRepository
+        .findByCosechaIdAndEstado(cosechaId, EstadoSolicitud.PENDIENTE)
+        .forEach(Solicitud::rechazar);
   }
 }

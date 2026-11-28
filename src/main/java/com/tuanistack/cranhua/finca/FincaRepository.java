@@ -75,7 +75,7 @@ public interface FincaRepository extends JpaRepository<Finca, UUID> {
       left join Lote l on l.codigo = i.codigoTrazabilidad
       left join l.solicitud s
       join Cosecha co on co = s.cosecha
-        or (l.id is null and co.codigoLote = i.codigoTrazabilidad)
+        or (l.id is null and co.codigoLote = i.codigoTrazabilidad and co.eliminada = false)
       join co.finca f
       where i.cafeteria.id = :cafeteriaId and f.eliminada = false
       order by f.nombre
